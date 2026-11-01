@@ -1,4 +1,4 @@
-# <img src="docs/logo/icon.svg" alt="cLeanBot Logo" width="64" height="64" align="middle"> cLeanBot
+# <img src="docs/logo/icon.png" alt="cLeanBot Logo" width="64" height="64" align="middle"> cLeanBot
 
 Debloat, speed up, and wirelessly manage your Android TV, Google TV, and streaming devices directly from your phone. Zero root, no PC required.
 
