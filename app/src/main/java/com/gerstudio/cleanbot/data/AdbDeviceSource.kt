@@ -44,7 +44,7 @@ import com.gerstudio.cleanbot.adb.PairResult
 import com.gerstudio.cleanbot.adb.pairOnFreshPort
 import com.gerstudio.cleanbot.adb.Tweak
 import com.gerstudio.cleanbot.adb.Tweaks
-import com.flyfishxu.kadb.mdns.KadbMdnsAndroid
+import com.gerstudio.cleanbot.kadb.mdns.KadbMdnsAndroid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

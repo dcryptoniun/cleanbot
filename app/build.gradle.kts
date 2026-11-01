@@ -20,9 +20,15 @@ android {
         applicationId = "com.gerstudio.cleanbot"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0.1"
     }
+
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
 
     androidResources {
         localeFilters += listOf("en", "es", "zh-rCN", "ja", "ru", "hi")
@@ -154,8 +160,17 @@ androidComponents {
     }
 }
 
+
+configurations.all {
+    exclude(group = "org.lsposed.hiddenapibypass", module = "hiddenapibypass")
+    exclude(group = "me.weishu", module = "free_reflection")
+    exclude(group = "com.flyfishxu", module = "kadb")
+    exclude(group = "com.flyfishxu", module = "kadb-mdns")
+}
+
 dependencies {
     implementation(project(":adb"))
+    implementation(libs.conscrypt.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

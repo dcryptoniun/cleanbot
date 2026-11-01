@@ -102,6 +102,7 @@ fun DebloatScreen(
 
     val filteredApps = remember(apps, query, selectedFilter) {
         apps.filter { app ->
+            if (app.packageName == "com.gerstudio.cleanbot" || app.packageName.startsWith("com.gerstudio.cleanbot")) return@filter false
             val matchesQuery = query.isBlank() ||
                 app.label.contains(query, ignoreCase = true) ||
                 app.packageName.contains(query, ignoreCase = true)
@@ -122,6 +123,7 @@ fun DebloatScreen(
 
     val recommendedDebloatList = remember(apps) {
         apps.filter { app ->
+            if (app.packageName == "com.gerstudio.cleanbot" || app.packageName.startsWith("com.gerstudio.cleanbot")) return@filter false
             val safety = SafetyClassifier.classify(app.packageName, !app.removable && app.enabled)
             safety == SafetyLevel.SAFE_TO_REMOVE && app.enabled
         }.map { it.packageName }

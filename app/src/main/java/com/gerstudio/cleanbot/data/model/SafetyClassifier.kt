@@ -33,6 +33,9 @@ object SafetyClassifier {
     )
 
     fun classify(packageName: String, isCurrentLauncher: Boolean): SafetyLevel {
+        if (packageName == "com.gerstudio.cleanbot" || packageName.startsWith("com.gerstudio.cleanbot")) {
+            return SafetyLevel.PROTECTED_CORE
+        }
         if (isCurrentLauncher) return SafetyLevel.PROTECTED_CORE
         if (packageName in CORE_PACKAGES) return SafetyLevel.PROTECTED_CORE
         if (packageName.startsWith("com.android.server") ||

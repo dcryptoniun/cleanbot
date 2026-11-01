@@ -6,8 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
-// Bytecode stays at 17 so :app can dex it. Kadb itself ships Java 25 class files,
-// so tests that touch it need Gradle running on JDK 25 (see README).
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -19,11 +17,24 @@ kotlin {
     }
 }
 
+configurations.all {
+    exclude(group = "org.lsposed.hiddenapibypass", module = "hiddenapibypass")
+    exclude(group = "me.weishu", module = "free_reflection")
+    exclude(group = "com.flyfishxu", module = "kadb")
+    exclude(group = "com.flyfishxu", module = "kadb-mdns")
+}
+
 dependencies {
-    api(libs.kadb)
-    api(libs.kadb.mdns)
     api(libs.kotlinx.coroutines.core)
+    api(libs.okio)
+    api(libs.bcprov)
+    api(libs.bcpkix)
+    api(libs.spake2)
+
+    compileOnly(libs.conscrypt.openjdk.uber)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.conscrypt.openjdk.uber)
 }

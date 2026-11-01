@@ -89,6 +89,7 @@ object Protected {
      * protects it, so FLauncher can go while another launcher is Home.
      */
     fun reason(pkg: String, homePackages: Set<String> = emptySet(), userApp: Boolean = false): ProtectedReason? {
+        if (pkg == "com.gerstudio.cleanbot" || pkg.startsWith("com.gerstudio.cleanbot")) return ProtectedReason.SYSTEM
         if (pkg in homePackages) return ProtectedReason.HOME_SCREEN
         EXACT[pkg]?.let { return it }
         if (CORE.matches(pkg) && !CORE_OK.matches(pkg)) return ProtectedReason.SYSTEM

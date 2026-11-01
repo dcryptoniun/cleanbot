@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.gerstudio.cleanbot.adb
 
-import com.flyfishxu.kadb.mdns.KadbMdns
-import com.flyfishxu.kadb.mdns.MdnsServiceType
+import com.gerstudio.cleanbot.kadb.mdns.KadbMdns
+import com.gerstudio.cleanbot.kadb.mdns.MdnsServiceType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.ProducerScope

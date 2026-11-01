@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.gerstudio.cleanbot.adb
 
-import com.flyfishxu.kadb.Kadb
-import com.flyfishxu.kadb.cert.KadbCert
-import com.flyfishxu.kadb.cert.KadbCertPolicy
-import com.flyfishxu.kadb.cert.OkioFilePrivateKeyStore
+import com.gerstudio.cleanbot.kadb.Kadb
+import com.gerstudio.cleanbot.kadb.cert.KadbCert
+import com.gerstudio.cleanbot.kadb.cert.KadbCertPolicy
+import com.gerstudio.cleanbot.kadb.cert.OkioFilePrivateKeyStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible

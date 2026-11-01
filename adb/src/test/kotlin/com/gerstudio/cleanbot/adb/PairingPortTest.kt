@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.gerstudio.cleanbot.adb
 
-import com.flyfishxu.kadb.mdns.KadbMdns
-import com.flyfishxu.kadb.mdns.MdnsDiscoveryState
-import com.flyfishxu.kadb.mdns.MdnsEndpoint
-import com.flyfishxu.kadb.mdns.MdnsServiceType
-import com.flyfishxu.kadb.mdns.MdnsStatus
+import com.gerstudio.cleanbot.kadb.mdns.KadbMdns
+import com.gerstudio.cleanbot.kadb.mdns.MdnsDiscoveryState
+import com.gerstudio.cleanbot.kadb.mdns.MdnsEndpoint
+import com.gerstudio.cleanbot.kadb.mdns.MdnsServiceType
+import com.gerstudio.cleanbot.kadb.mdns.MdnsStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test

@@ -12,11 +12,11 @@ activity-compose = "1.13.0"
 core-ktx = "1.19.1"
 core-splashscreen = "1.2.0"
 lifecycle = "2.11.0"
-kadb = "2.1.5"
-# kadb-mdns stops at 2.1.4; 2.1.5 was not published for it.
-kadb-mdns = "2.1.4"
 coroutines = "1.11.0"
-conscrypt = "2.5.2"
+conscrypt = "2.8.0"
+okio = "3.9.1"
+bouncycastle = "1.78.1"
+spake2 = "1.1.1"
 roborazzi = "1.77.0"
 robolectric = "4.17"
 junit = "4.13.2"
@@ -46,12 +46,15 @@ compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
-kadb = { module = "com.flyfishxu:kadb", version.ref = "kadb" }
-kadb-mdns = { module = "com.flyfishxu:kadb-mdns", version.ref = "kadb-mdns" }
+conscrypt-android = { module = "org.conscrypt:conscrypt-android", version.ref = "conscrypt" }
+conscrypt-openjdk-uber = { module = "org.conscrypt:conscrypt-openjdk-uber", version.ref = "conscrypt" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+spake2 = { module = "com.github.Flyfish233:spake2-java", version.ref = "spake2" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
-conscrypt-openjdk-uber = { module = "org.conscrypt:conscrypt-openjdk-uber", version.ref = "conscrypt" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]

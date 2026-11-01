@@ -153,7 +153,7 @@ fun DebloatScreen(
         lists is Suggestions.NoList -> listOf(
             SuggestedGroup(
                 stringResource(R.string.lists_apps_on_tv),
-                tvApps.filter { it.enabled && it.protectedReason == null && !it.builtInLauncher }.sortedBy { it.label.lowercase() }
+                tvApps.filter { it.enabled && it.protectedReason == null && !it.builtInLauncher && !it.packageName.startsWith("com.gerstudio.cleanbot") }.sortedBy { it.label.lowercase() }
                     .map { Suggested(it.packageName, it.label, note = null, optional = false, ticked = false) },
             ),
         )

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.gerstudio.cleanbot.adb
 
-import com.flyfishxu.kadb.cert.KadbCert
+import com.gerstudio.cleanbot.kadb.cert.KadbCert
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.io.File

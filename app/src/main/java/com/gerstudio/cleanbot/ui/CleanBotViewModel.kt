@@ -2363,6 +2363,7 @@ class CleanBotViewModel(
                 val engine = DebloatEngine(appContext, session)
                 var successCount = 0
                 for (pkg in packageNames) {
+                    if (pkg == "com.gerstudio.cleanbot" || pkg.startsWith("com.gerstudio.cleanbot")) continue
                     val res = engine.executeDebloat(pkg, mode, keepData, backupFirst)
                     if (res is DebloatActionResult.Success) successCount++
                 }
