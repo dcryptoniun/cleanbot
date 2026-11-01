@@ -12,6 +12,12 @@ until this file has a section for its version.
 
 ## Unreleased
 
+## 1.0.2 — 2026-11-01
+
+- **New:** Full 16 KB memory page size support compliant with Android 15+ Google Play standards.
+- **Improved:** Inlined and hardened wireless pairing & ADB engine under cLeanBot namespace.
+- **Fixed:** Protected cLeanBot from debloat lists and unintended package operations.
+
 ## 1.0.1 — 2026-11-01
 
 - **New:** Rebranded to cLeanBot with brand new cyber-emerald visual identity and high-res adaptive launcher icons.
