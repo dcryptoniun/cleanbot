@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.CleanBot" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.CleanBot.Starting" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_cleanbot_logo</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_icon_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.CleanBot</item>
+    </style>
+</resources>
