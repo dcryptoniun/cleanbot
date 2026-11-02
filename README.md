@@ -3,12 +3,27 @@
 Debloat, speed up, and wirelessly manage your Android TV, Google TV, and streaming devices directly from your phone. Zero root, no PC required.
 
 <p>
+  <a href="https://play.google.com/store/apps/details?id=com.gerstudio.cleanbot">
+    <img src="https://img.shields.io/badge/Google_Play-Get_it_on_Play_Store-00696B?logo=googleplay&logoColor=white" alt="Google Play">
+  </a>
   <img src="https://img.shields.io/badge/License-GPL--3.0-00696B" alt="License: GPL-3.0">
   <img src="https://img.shields.io/badge/Android-8.0%2B-00696B" alt="Android 8.0+">
   <img src="https://img.shields.io/badge/Root-Not%20Needed-00696B" alt="No Root Needed">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local-00696B" alt="100% Local / No Tracking">
   <img src="https://img.shields.io/badge/Status-Active-00696B" alt="Status: Active">
 </p>
+
+---
+
+## 📥 Download
+
+Get **cLeanBot** on Google Play:
+
+<a href="https://play.google.com/store/apps/details?id=com.gerstudio.cleanbot">
+  <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="60">
+</a>
+
+Direct link: [https://play.google.com/store/apps/details?id=com.gerstudio.cleanbot](https://play.google.com/store/apps/details?id=com.gerstudio.cleanbot)
 
 ---
 
