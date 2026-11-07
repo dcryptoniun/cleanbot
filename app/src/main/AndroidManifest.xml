@@ -7,7 +7,9 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Android 17 blocks every connection to LAN addresses (and mDNS) for apps targeting 37
          without this runtime permission. The UI must request it before the first scan. -->
-    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+        <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- Google Play In-App Purchase Billing for tips & support -->
+    <uses-permission android:name="com.android.vending.BILLING" />
 
     <application
         android:allowBackup="false"

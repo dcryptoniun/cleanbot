@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+﻿// SPDX-License-Identifier: GPL-3.0-only
 
 package com.gerstudio.cleanbot
 
@@ -765,8 +765,9 @@ class ScreenshotTest {
         shot("96_whats_new") { whatsNew(opened)() }
         compose.onNodeWithText("Installed").assertExists()
         compose.onAllNodesWithText("NEW")[0].assertExists()
-        compose.onAllNodes(SemanticsMatcher("opens #267") { it.config.getOrNull(SemanticsActions.OnClick)?.label == "#267" })[0].performClick()
-        assertEquals(listOf(Changelog.pullUrl(267)), opened)
+        val pr = changelog.first().changes.mapNotNull { it.pr }.first()
+        compose.onAllNodes(SemanticsMatcher("opens #$pr") { it.config.getOrNull(SemanticsActions.OnClick)?.label == "#$pr" })[0].performClick()
+        assertEquals(listOf(Changelog.pullUrl(pr)), opened)
     }
 
     @Test fun whatsNew_dark() = shot("96_whats_new", dark = true) { whatsNew()() }

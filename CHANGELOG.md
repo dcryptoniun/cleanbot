@@ -12,28 +12,37 @@ until this file has a section for its version.
 
 ## Unreleased
 
+## 1.2.0 — 2026-11-07
+
+- **New:** Support cLeanBot screen with Play Billing consumable tips jar and sponsor links. [#288](../../pull/288)
+- **New:** Dismissible home screen support banner to help sustain active project development. [#289](../../pull/289)
+- **New:** Integrated Google Play In-App Updates with flexible download progress and seamless restart. [#292](../../pull/292)
+- **New:** Integrated Google Play In-App Review with policy-compliant milestone triggers and settings entry. [#293](../../pull/293)
+- **Improved:** Automated production keystore signing integration via local configuration. [#290](../../pull/290)
+- **Improved:** Upgraded Google Play Billing Library to latest 7.1.1 version. [#291](../../pull/291)
+
 ## 1.1.0 — 2026-11-07
 
-- **New:** TV UI Themes & Studio featuring 9 curated visual profiles inspired by CleanYourTV.
-- **New:** Interactive living room 16:9 TV mockup preview with live layout and clock customizer.
-- **New:** Wireless Theme Deployer that compiles CleanYourTV config.json and pushes themes over ADB.
-- **New:** CleanYourTV Curated Debloat Presets (Safe Clean, Ultra Clean, Fire TV, Telemetry Shield).
-- **New:** Living Room TV Toolkit with Sleep Timer, Audio-Only screen standby, and DPI tuner.
-- **New:** TV Launchers Hub supporting CleanYourTV Launcher, Projectivy, FLauncher, and Dispatch.
-- **Improved:** Adaptive navigation suite with first-class Themes & Launchers destination.
+- **New:** TV UI Themes & Studio featuring 9 curated visual profiles inspired by CleanYourTV. [#282](../../pull/282)
+- **New:** Interactive living room 16:9 TV mockup preview with live layout and clock customizer. [#283](../../pull/283)
+- **New:** Wireless Theme Deployer that compiles CleanYourTV config.json and pushes themes over ADB. [#284](../../pull/284)
+- **New:** CleanYourTV Curated Debloat Presets (Safe Clean, Ultra Clean, Fire TV, Telemetry Shield). [#285](../../pull/285)
+- **New:** Living Room TV Toolkit with Sleep Timer, Audio-Only screen standby, and DPI tuner. [#286](../../pull/286)
+- **New:** TV Launchers Hub supporting CleanYourTV Launcher, Projectivy, FLauncher, and Dispatch. [#287](../../pull/287)
+- **Improved:** Adaptive navigation suite with first-class Themes & Launchers destination. [#281](../../pull/281)
 
 ## 1.0.2 — 2026-11-01
 
-- **New:** Full 16 KB memory page size support compliant with Android 15+ Google Play standards.
-- **Improved:** Inlined and hardened wireless pairing & ADB engine under cLeanBot namespace.
-- **Fixed:** Protected cLeanBot from debloat lists and unintended package operations.
+- **New:** Full 16 KB memory page size support compliant with Android 15+ Google Play standards. [#278](../../pull/278)
+- **Improved:** Inlined and hardened wireless pairing & ADB engine under cLeanBot namespace. [#279](../../pull/279)
+- **Fixed:** Protected cLeanBot from debloat lists and unintended package operations. [#280](../../pull/280)
 
 ## 1.0.1 — 2026-11-01
 
-- **New:** Rebranded to cLeanBot with brand new cyber-emerald visual identity and high-res adaptive launcher icons.
-- **New:** Target SDK updated to Android 15 (SDK 36) with Android 16 (compileSdk 37) compatibility.
-- **Improved:** Codebase modernized with zero compiler warnings and migrated to latest Jetpack Compose APIs.
-- **Improved:** Production release bundle support with signed AAB packaging.
+- **New:** Rebranded to cLeanBot with brand new cyber-emerald visual identity and high-res adaptive launcher icons. [#274](../../pull/274)
+- **New:** Target SDK updated to Android 15 (SDK 36) with Android 16 (compileSdk 37) compatibility. [#275](../../pull/275)
+- **Improved:** Codebase modernized with zero compiler warnings and migrated to latest Jetpack Compose APIs. [#276](../../pull/276)
+- **Improved:** Production release bundle support with signed AAB packaging. [#277](../../pull/277)
 
 ## 0.14.0 — 2026-10-30
 

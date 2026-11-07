@@ -10,7 +10,7 @@ Debloat, speed up, customize, and wirelessly manage your Android TV, Google TV, 
   <img src="https://img.shields.io/badge/Android-8.0%2B-00696B" alt="Android 8.0+">
   <img src="https://img.shields.io/badge/Root-Not%20Needed-00696B" alt="No Root Needed">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local-00696B" alt="100% Local / No Tracking">
-  <img src="https://img.shields.io/badge/Version-1.1.0-00696B" alt="Version 1.1.0">
+  <img src="https://img.shields.io/badge/Version-1.2.0-00696B" alt="Version 1.2.0">
   <img src="https://img.shields.io/badge/Status-Active-00696B" alt="Status: Active">
 </p>
 
@@ -127,6 +127,20 @@ cd cleanbot
 ## 🤝 Contributing
 
 Contributions, bug reports, and device compatibility lists are warmly welcomed! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) for architecture guidelines, code style, and PR processes.
+
+---
+
+## 💖 Support the Project
+
+cLeanBot is 100% free, open-source, and contains zero advertisements or trackers. If cLeanBot helped declutter or speed up your TV, consider supporting our ongoing development!
+
+- ☕ **Buy Me a Coffee**: [buymeacoffee.com/mayankmeena](https://buymeacoffee.com/mayankmeena)
+- 💖 **GitHub Sponsors**: [github.com/sponsors/mayankmeena](https://github.com/sponsors/mayankmeena)
+- 📲 **More Apps on Google Play**: [Ger Studio Developer Profile](https://play.google.com/store/apps/dev?id=8895908145914606687)
+- 🌐 **Official Website**: [gerstudio.com](https://www.gerstudio.com/)
+- ⭐ **Star on GitHub**: [github.com/dcryptoniun/cleanbot](https://github.com/dcryptoniun/cleanbot)
+
+You can also send a tip directly inside the app under the **Support** screen using Google Play Billing!
 
 ---
 

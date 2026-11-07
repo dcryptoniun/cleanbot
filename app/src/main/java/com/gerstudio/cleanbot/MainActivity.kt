@@ -15,9 +15,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import android.app.Activity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import com.gerstudio.cleanbot.domain.play.PlayUpdateStatus
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -227,7 +229,9 @@ fun CleanBotApp(
     var whatsNew by rememberSaveable { mutableStateOf(false) }
     var access by rememberSaveable { mutableStateOf(false) }
     var showTvTools by rememberSaveable { mutableStateOf(false) }
+    var showSupport by rememberSaveable { mutableStateOf(false) }
     val sleepTimerState by vm.sleepTimerState.collectAsStateWithLifecycle()
+    val playUpdateStatus by vm.playUpdateStatus.collectAsStateWithLifecycle()
     // Connect again from the logged-out page: which TV, and since when, for its Allow screen.
     var rejoinId by rememberSaveable { mutableStateOf<String?>(null) }
     var rejoinSince by rememberSaveable { mutableStateOf(0L) }
@@ -248,7 +252,43 @@ fun CleanBotApp(
     }
 
     // On every return to the app, not just a cold start; the check itself enforces the interval.
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkForUpdate() }
+    val currentActivity = context as? Activity
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        vm.checkForUpdate()
+        currentActivity?.let { vm.playUpdateManager?.onResume(it) }
+    }
+    LaunchedEffect(Unit) {
+        vm.checkForGooglePlayUpdate()
+    }
+    LaunchedEffect(playUpdateStatus) {
+        when (val pStatus = playUpdateStatus) {
+            is PlayUpdateStatus.Downloaded -> {
+                val res = snackbar.showSnackbar(
+                    message = "An update has been downloaded.",
+                    actionLabel = "Restart & Install",
+                    duration = SnackbarDuration.Indefinite
+                )
+                if (res == SnackbarResult.ActionPerformed) {
+                    vm.completeGooglePlayUpdate()
+                }
+            }
+            is PlayUpdateStatus.UpdateAvailable -> {
+                if (pStatus.isImmediate) {
+                    currentActivity?.let { vm.startGooglePlayUpdate(it, pStatus.info) }
+                } else {
+                    val res = snackbar.showSnackbar(
+                        message = "A new update is available on Google Play.",
+                        actionLabel = "Update",
+                        duration = SnackbarDuration.Long
+                    )
+                    if (res == SnackbarResult.ActionPerformed && currentActivity != null) {
+                        vm.startGooglePlayUpdate(currentActivity, pStatus.info)
+                    }
+                }
+            }
+            else -> Unit
+        }
+    }
     // In the background nothing reads the TVs or sweeps the LAN; back on screen, everything picks up again.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.pause() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { vm.resume() }
@@ -257,7 +297,7 @@ fun CleanBotApp(
     LoggedOutSnackbars(snackbar, { state.devices }, { state.selectedId }, onView = vm::select)
 
     // A newly connected TV becomes the selection; leave the add flow then, not on tap.
-    LaunchedEffect(state.selectedId) { adding = false; remote = false; advanced = false; history = false; resetting = false; debloat = false; settings = false; whatsNew = false; access = false; rejoinId = null }
+    LaunchedEffect(state.selectedId) { adding = false; remote = false; advanced = false; history = false; resetting = false; debloat = false; settings = false; whatsNew = false; access = false; showSupport = false; rejoinId = null }
     // Logged out mid-screen: the page takes over, and the TV comes back on Overview once allowed again.
     val loggedOutAt = state.selected?.loggedOutAt
     LaunchedEffect(loggedOutAt) { if (loggedOutAt != null) { remote = false; advanced = false; history = false; resetting = false; debloat = false; settings = false; whatsNew = false; access = false } }
@@ -283,6 +323,7 @@ fun CleanBotApp(
             onOpenWifi = { context.openWifiSettings() },
             phoneKey = remember { Connector.fingerprint() },
             onLeave = vm::leaveConnect,
+            onOpenSupport = { showSupport = true },
         )
     } else if (state.report != null) {
         BackHandler { vm.closeReport() }
@@ -349,6 +390,17 @@ fun CleanBotApp(
         BackHandler { whatsNew = false }
         LaunchedEffect(state.available) { vm.loadNewer() }
         WhatsNewScreen(rememberChangelog(), back = { whatsNew = false }, available = state.available, newer = state.newer, onUpdate = vm::reopenUpdate)
+    } else if (showSupport) {
+        BackHandler { showSupport = false }
+        val tipOptions by vm.tipOptions.collectAsStateWithLifecycle()
+        val purchaseStatus by vm.purchaseStatus.collectAsStateWithLifecycle()
+        com.gerstudio.cleanbot.ui.screens.support.SupportScreen(
+            tipOptions = tipOptions,
+            purchaseStatus = purchaseStatus,
+            onSendTip = vm::launchTipPurchase,
+            onDismissStatus = vm::dismissPurchaseStatus,
+            onBack = { showSupport = false }
+        )
     } else if (settings) {
         BackHandler { settings = false }
         SettingsScreen(
@@ -501,6 +553,17 @@ fun CleanBotApp(
                         },
                     )
                 }
+                AppDestination.Support -> {
+                    val tipOptions by vm.tipOptions.collectAsStateWithLifecycle()
+                    val purchaseStatus by vm.purchaseStatus.collectAsStateWithLifecycle()
+                    com.gerstudio.cleanbot.ui.screens.support.SupportScreen(
+                        tipOptions = tipOptions,
+                        purchaseStatus = purchaseStatus,
+                        onSendTip = vm::launchTipPurchase,
+                        onDismissStatus = vm::dismissPurchaseStatus,
+                        onBack = null
+                    )
+                }
                 AppDestination.Settings -> {
                     val scope = rememberCoroutineScope()
                     com.gerstudio.cleanbot.ui.screens.settings.CleanBotSettingsScreen(
@@ -516,6 +579,9 @@ fun CleanBotApp(
                         onImportPreset = {},
                         onResetTv = { vm.openReset(); resetting = true },
                         onOpenTvTools = { showTvTools = true },
+                        onOpenSupport = { showSupport = true },
+                        onRateApp = { (context as? Activity)?.let { vm.requestInAppReview(it, force = true) } },
+                        onCheckForUpdate = { vm.checkForGooglePlayUpdate() },
                         onBack = { destination = AppDestination.Debloat },
                     )
                 }

@@ -2,6 +2,14 @@
 
 package com.gerstudio.cleanbot.ui
 
+import android.app.Activity
+import com.gerstudio.cleanbot.domain.billing.PlayBillingManager
+import com.gerstudio.cleanbot.domain.billing.TipOption
+import com.gerstudio.cleanbot.domain.billing.PurchaseStatus
+import com.gerstudio.cleanbot.domain.play.PlayReviewManager
+import com.gerstudio.cleanbot.domain.play.PlayUpdateManager
+import com.gerstudio.cleanbot.domain.play.PlayUpdateStatus
+
 import android.content.Context
 import android.net.Uri
 import com.gerstudio.cleanbot.data.Proc
@@ -440,6 +448,13 @@ class CleanBotViewModel(
     val preferences: StateFlow<UserPreferences> = (preferencesManager?.userPreferences ?: flowOf(UserPreferences()))
         .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
 
+    val billingManager: PlayBillingManager? = appContext?.let { PlayBillingManager(it, viewModelScope) }
+    val tipOptions: StateFlow<List<TipOption>> = billingManager?.tipOptions ?: MutableStateFlow(PlayBillingManager.DEFAULT_TIP_OPTIONS).asStateFlow()
+    val purchaseStatus: StateFlow<PurchaseStatus> = billingManager?.purchaseStatus ?: MutableStateFlow<PurchaseStatus>(PurchaseStatus.Idle).asStateFlow()
+    val playReviewManager: PlayReviewManager? = appContext?.let { PlayReviewManager(it) }
+    val playUpdateManager: PlayUpdateManager? = appContext?.let { PlayUpdateManager(it) }
+    val playUpdateStatus: StateFlow<PlayUpdateStatus> = playUpdateManager?.updateStatus ?: MutableStateFlow<PlayUpdateStatus>(PlayUpdateStatus.Idle).asStateFlow()
+
     private val _fileEntries = MutableStateFlow<List<RemoteFsEntry>>(emptyList())
     val fileEntries: StateFlow<List<RemoteFsEntry>> = _fileEntries.asStateFlow()
 
@@ -509,6 +524,7 @@ class CleanBotViewModel(
     private var dismissedRequest: String? = null
 
     init {
+        billingManager?.startBillingConnection()
         viewModelScope.launch {
             // Remembered TVs open straight to their page (offline until they answer).
             val known = source.known()
@@ -2371,6 +2387,7 @@ class CleanBotViewModel(
                     val res = engine.executeDebloat(pkg, mode, keepData, backupFirst)
                     if (res is DebloatActionResult.Success) successCount++
                 }
+                if (successCount > 0) recordPositiveMilestone()
                 val estMb = engine.estimateStorageSavedMb(successCount)
                 _notice.value = UiText.Raw("Debloated $successCount apps (~${estMb}MB saved)")
                 refreshApps(id)
@@ -2515,6 +2532,7 @@ class CleanBotViewModel(
         viewModelScope.launch {
             val mgr = ThemeManager(appContext, session)
             val res = mgr.applyThemeToTv(theme)
+            if (res.isSuccess) recordPositiveMilestone()
             _notice.value = UiText.Raw(res.getOrElse { "Failed to push theme: ${it.message}" })
         }
     }
@@ -2638,5 +2656,43 @@ class CleanBotViewModel(
             val res = tools.secureAdbPort()
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
         }
+    }
+
+    fun launchTipPurchase(activity: Activity, tip: TipOption) {
+        billingManager?.launchPurchaseFlow(activity, tip)
+    }
+
+    fun dismissPurchaseStatus() {
+        billingManager?.dismissPurchaseStatus()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        billingManager?.endConnection()
+        playUpdateManager?.destroy()
+    }
+
+    fun requestInAppReview(activity: Activity, force: Boolean = false, onComplete: () -> Unit = {}) {
+        playReviewManager?.requestReviewFlow(activity, force, onComplete)
+    }
+
+    fun recordPositiveMilestone() {
+        playReviewManager?.recordMilestone()
+    }
+
+    fun checkForGooglePlayUpdate(onAvailable: ((com.google.android.play.core.appupdate.AppUpdateInfo) -> Unit)? = null) {
+        playUpdateManager?.checkForUpdate(onAvailable)
+    }
+
+    fun startGooglePlayUpdate(activity: Activity, info: com.google.android.play.core.appupdate.AppUpdateInfo): Boolean {
+        return playUpdateManager?.startUpdate(activity, info) ?: false
+    }
+
+    fun completeGooglePlayUpdate() {
+        playUpdateManager?.completeUpdate()
+    }
+
+    fun dismissGooglePlayUpdate() {
+        playUpdateManager?.dismissUpdateStatus()
     }
 }

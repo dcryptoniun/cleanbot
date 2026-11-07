@@ -4,6 +4,8 @@ import com.android.build.api.artifact.SingleArtifact
 import com.android.tools.r8.D8
 import com.android.tools.r8.D8Command
 import com.android.tools.r8.OutputMode
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -20,8 +22,8 @@ android {
         applicationId = "com.gerstudio.cleanbot"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.1.0"
+        versionCode = 5
+        versionName = "1.2.0"
     }
 
     dependenciesInfo {
@@ -35,15 +37,29 @@ android {
         generateLocaleConfig = true
     }
 
-    val keystore = providers.environmentVariable("RELEASE_KEYSTORE").orNull
+    val localProperties = Properties()
+    val propFile = rootProject.file("local.properties")
+    if (propFile.exists()) {
+        FileInputStream(propFile).use { stream ->
+            localProperties.load(stream)
+        }
+    }
+
+    val releaseKeystore = providers.environmentVariable("RELEASE_KEYSTORE").orNull
+        ?: localProperties.getProperty("release.keystore")
+    val releaseKeyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD").orNull
+        ?: localProperties.getProperty("release.keyPassword")
+        ?: localProperties.getProperty("release.storePassword")
+    val releaseKeyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS").orNull
+        ?: localProperties.getProperty("release.keyAlias")
+
     signingConfigs {
-        if (keystore != null) {
+        if (releaseKeystore != null && releaseKeyPassword != null && releaseKeyAlias != null) {
             create("release") {
-                storeFile = file(keystore)
-                val password = providers.environmentVariable("RELEASE_KEY_PASSWORD").get()
-                storePassword = password
-                keyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS").get()
-                keyPassword = password
+                storeFile = file(releaseKeystore)
+                storePassword = releaseKeyPassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
@@ -72,7 +88,7 @@ android {
         compose = true
     }
 
-    sourceSets.getByName("test").java.srcDir("src/helper/java")
+    sourceSets.getByName("test").java.directories.add("src/helper/java")
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -192,6 +208,9 @@ dependencies {
     implementation(libs.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.play.billing.ktx)
+    implementation(libs.play.app.update.ktx)
+    implementation(libs.play.review.ktx)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

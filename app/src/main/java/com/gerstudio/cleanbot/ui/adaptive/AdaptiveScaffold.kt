@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Palette
@@ -33,6 +34,7 @@ enum class AppDestination(val label: String, val icon: ImageVector) {
     Remote("Remote", Icons.Default.Tv),
     Monitor("Monitor", Icons.Default.MonitorHeart),
     Files("Files", Icons.Default.Folder),
+    Support("Support", Icons.Default.Favorite),
     Settings("Settings", Icons.Default.Settings)
 }
 

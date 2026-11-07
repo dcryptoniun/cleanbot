@@ -24,6 +24,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import com.gerstudio.cleanbot.ui.components.SupportHomeBanner
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -83,6 +85,7 @@ fun ScanScreen(
     onOpenWifi: () -> Unit = {},
     phoneKey: String? = null,
     onLeave: (ScanHit) -> Unit = {},
+    onOpenSupport: (() -> Unit)? = null,
 ) {
     var adding by remember { mutableStateOf(false) }
     var help by remember { mutableStateOf(false) }
@@ -111,6 +114,8 @@ fun ScanScreen(
         return
     }
 
+    var bannerDismissed by rememberSaveable { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,6 +123,13 @@ fun ScanScreen(
                 navigationIcon = {
                     if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.scan_back)) }
                 },
+                actions = {
+                    if (onOpenSupport != null) {
+                        IconButton(onClick = onOpenSupport) {
+                            Icon(Icons.Default.Favorite, contentDescription = "Support", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
             )
         },
     ) { pad ->
@@ -128,6 +140,13 @@ fun ScanScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text(stringResource(R.string.scan_title), style = MaterialTheme.typography.headlineMedium)
+            if (onOpenSupport != null) {
+                SupportHomeBanner(
+                    visible = !bannerDismissed,
+                    onOpenSupport = onOpenSupport,
+                    onDismiss = { bannerDismissed = true }
+                )
+            }
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Info, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)

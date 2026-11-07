@@ -64,6 +64,7 @@ fun TvToolsBottomSheet(
     onSecureAdb: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    @Suppress("DEPRECATION")
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedMinutes by remember { mutableIntStateOf(30) }
 
