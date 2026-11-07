@@ -65,6 +65,7 @@ fun CleanBotSettingsScreen(
     onExportPreset: () -> Unit,
     onImportPreset: () -> Unit,
     onResetTv: () -> Unit,
+    onOpenTvTools: (() -> Unit)? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -326,6 +327,42 @@ fun CleanBotSettingsScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // SECTION: Living Room TV Toolkit
+        Text(
+            text = "Living Room TV Toolkit",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Sleep timer, Audio-only standby, TV resolution & density scaler, ambient screensaver, and cache purging.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Button(
+                    onClick = { onOpenTvTools?.invoke() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Tv, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open TV Toolkit & Sleep Timer")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         // SECTION: Shareable Debloat Presets & Reset
         Text(
             text = "Presets & System Recovery",
@@ -373,6 +410,57 @@ fun CleanBotSettingsScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Reset TV (Re-enable & Restore Built-in Apps)")
                 }
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // SECTION: Credits & Acknowledgments
+        Text(
+            text = "About & Community Credits",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "cLeanBot v1.1.0",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Crafted for high performance, privacy, and clean living room TV experiences.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Special Acknowledgments & Inspirations:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "• CleanYourTV (@Gathin23): Themes studio, dock styles, and curated debloat profiles\n" +
+                            "• Tellyscope (@man15h): Foundational companion app architecture and remote\n" +
+                            "• Kadb & Dadb (@flyfishxu & Mobile-dev): Pure Kotlin ADB wireless protocol\n" +
+                            "• spake2-java (@Flyfish233): Android 11+ SPAKE2 pairing\n" +
+                            "• Projectivy & FLauncher: Open-source TV launcher pioneers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                )
+                Text(
+                    text = "Licensed under GNU GPL v3. Full terms and third-party notices in NOTICE.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
         }
 

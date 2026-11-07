@@ -1,6 +1,6 @@
 # <img src="docs/logo/icon.png" alt="cLeanBot Logo" width="64" height="64" align="middle"> cLeanBot
 
-Debloat, speed up, and wirelessly manage your Android TV, Google TV, and streaming devices directly from your phone. Zero root, no PC required.
+Debloat, speed up, customize, and wirelessly manage your Android TV, Google TV, and streaming devices directly from your phone. Zero root, no PC required.
 
 <p>
   <a href="https://play.google.com/store/apps/details?id=com.gerstudio.cleanbot">
@@ -10,6 +10,7 @@ Debloat, speed up, and wirelessly manage your Android TV, Google TV, and streami
   <img src="https://img.shields.io/badge/Android-8.0%2B-00696B" alt="Android 8.0+">
   <img src="https://img.shields.io/badge/Root-Not%20Needed-00696B" alt="No Root Needed">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local-00696B" alt="100% Local / No Tracking">
+  <img src="https://img.shields.io/badge/Version-1.1.0-00696B" alt="Version 1.1.0">
   <img src="https://img.shields.io/badge/Status-Active-00696B" alt="Status: Active">
 </p>
 
@@ -31,24 +32,28 @@ Direct link: [https://play.google.com/store/apps/details?id=com.gerstudio.cleanb
 
 Modern smart TVs and streaming sticks often come bogged down by pre-installed OEM bloatware, sluggish background telemetry, sponsored recommendation carousels, and constrained storage. 
 
-**cLeanBot** is an open-source, local-first utility built by **Ger Studio** to help you reclaim your television's speed, storage, and privacy. Operating entirely over your local Wi-Fi network using Android's native Wireless Debugging (ADB) protocol, cLeanBot allows you to safely freeze or disable system clutter, sideload apps, push files, and control your device with an intuitive virtual remote—all from your Android phone.
+**cLeanBot** is an open-source, local-first utility built by **Ger Studio** to help you reclaim your television's speed, storage, privacy, and visual aesthetics. Operating entirely over your local Wi-Fi network using Android's native Wireless Debugging (ADB) protocol, cLeanBot allows you to safely freeze or disable system clutter, deploy living room TV themes, sideload apps, push files, and control your device with an intuitive virtual remote—all from your Android phone.
 
 ---
 
 ## ✨ Key Features
 
-- **⚡ Smart 1-Click Debloat**  
-  Intelligently matches your TV against 330+ curated debloat lists. Safely disable sponsored launchers, OEM telemetry, and idle background services. Preview and customize every single package before applying any change.
+- **⚡ CleanYourTV Curated Debloat Presets & 1-Click Cleaner**  
+  One-tap debloat profiles inspired by CleanYourTV (Safe Clean, Ultra Clean Home, Fire TV Unchained, Telemetry & Privacy Shield). Intelligently matches against 330+ curated device lists to safely freeze or disable OEM bloatware with 100% reversible undo.
+- **🎨 TV Themes Studio & Wireless Deployer**  
+  Browse 9 curated living room TV themes (Aurora Borealis, OLED Pure Black, Cyberpunk Neon, Nordic Frost, Sunset Ember, Tokyo Night, Forest Emerald, Retro Synthwave, Clean Minimalist). Live 16:9 TV mockup preview with customizer for dock styles, corner radii, and ambient clocks, and wirelessly push `config.json` themes directly over ADB.
+- **🚀 Launchers Showcase & Hub**  
+  Discover, configure, and switch ad-free alternative launchers (CleanYourTV Launcher, Projectivy, FLauncher, Dispatch, Wolf Launcher) with 1-tap default home switching and accessibility button remapping.
+- **🛠️ Living Room TV Toolkit**  
+  Wireless Sleep Timer with live countdown, Audio-Only screen standby, TV resolution & display density (DPI) tuner, ambient screensaver trigger, cache purging, and ADB port securer.
 - **📦 App Manager & Package Inspector**  
   View all installed system and user packages, inspect app status, freeze apps you don't currently need, clear caches to free storage, and uninstall user-installed apps with a tap.
 - **📂 Wireless File Transfer & Sideloading**  
   Wirelessly transfer APKs, videos, photos, and files straight from your phone's storage to your TV's filesystem at maximum Wi-Fi speeds. Sideload APKs or `.xapk` / `.apks` / `.apkm` bundles effortlessly.
 - **🎮 Virtual Trackpad & Remote**  
   Smooth, low-latency TV control featuring a directional D-Pad, playback controls, volume rockers, keyboard text input, and an interactive virtual mouse trackpad.
-- **🚀 Home Screen Freedom**  
-  Easily set up clean, ad-free alternative launchers (such as Projectivy or FLauncher) and switch back whenever you wish without breaking your TV's native settings.
 - **🔒 100% Private & Local**  
-  Zero tracking, zero analytics, and zero cloud logins. All ADB commands and file transfers remain strictly confined to your local home network.
+  Zero tracking, zero analytics, zero external cloud dependencies, and zero non-SDK reflection/dadb. 100% Google Play Store compliant.
 
 ---
 
@@ -127,7 +132,26 @@ Contributions, bug reports, and device compatibility lists are warmly welcomed! 
 
 ## 📜 License & Acknowledgments
 
-- **License**: Released under the [GNU General Public License v3.0](LICENSE).
-- **Credits & Upstream**: Built upon foundations from the open-source community, including [Tellyscope](https://github.com/man15h/tellyscope), [Kadb](https://github.com/flyfishxu/Kadb), and [cleanyourtv](https://github.com/Gathin23/cleanyourtv). Full third-party notices and licenses are documented in [NOTICE](NOTICE).
+cLeanBot is released under the [GNU General Public License v3.0](LICENSE).
+
+### 🙏 Credits & Inspirations
+
+cLeanBot stands on the shoulders of giants across the Android TV, open-source customization, and debloating communities. We owe immense gratitude to the following projects, creators, and maintainers:
+
+- **[CleanYourTV](https://github.com/Gathin23/cleanyourtv)** (by **[Gathin](https://github.com/Gathin23)** & [cleanyour.tv](https://cleanyour.tv/app))  
+  Special heartfelt thanks to Gathin for creating CleanYourTV and the inspirational [SHOWCASE.md](https://github.com/Gathin23/cleanyourtv/blob/main/SHOWCASE.md). CleanYourTV's vision for clean, ad-free living room TV experiences directly inspired cLeanBot's **TV Themes Studio**, live 16:9 TV chassis mockup, dock & clock customizers, wireless `config.json` deployment engine, and curated debloat profiles (Safe Clean, Ultra Clean Home, Fire TV Unchained, and Telemetry Shield).
+- **[Tellyscope](https://github.com/man15h/tellyscope)** (by **[Manish](https://github.com/man15h)** and contributors)  
+  The foundational phone-to-TV companion app architecture, device discovery, remote control interface, and initial debloat safety framework.
+- **[Kadb](https://github.com/flyfishxu/Kadb)** & **[Dadb](https://github.com/mobile-dev-inc/dadb)** (by **[Flyfish233](https://github.com/flyfishxu)** & **Mobile-dev Inc**)  
+  Pure-Kotlin Android Debug Bridge (ADB) client protocol implementation enabling zero-root, PC-free wireless pairing and shell execution.
+- **[spake2-java](https://github.com/Flyfish233/spake2-java)** (by **[Flyfish233](https://github.com/Flyfish233)**)  
+  SPAKE2 password-authenticated key exchange used for Android 11+ Wireless Debugging pairing over TLS.
+- **TV Launchers Community**:
+  - **[Projectivy Launcher](https://github.com/spocky/projengmenu)** (by **[Spocky](https://github.com/spocky)**) — For pioneering customizable, premium Android TV launcher experiences and accessibility overrides.
+  - **[FLauncher](https://gitlab.com/etiennep/flauncher)** (by **[Étienne Fesser](https://gitlab.com/etiennep)**) — An outstanding open-source Flutter TV launcher showcasing clean UI simplicity.
+  - **[Dispatch](https://dispatchlauncher.com)** (by **[Spaul Dhaliwal](https://dispatchlauncher.com)**) — For inspiring media-first living room top-shelf presentation.
+  - **Wolf Launcher** & **Primal Launcher** — Community favorites for reclaiming Fire TV and Android TV home screens.
+
+Full third-party licenses, notices, and copyright terms are preserved in [NOTICE](NOTICE).
 
 *cLeanBot is maintained by [Ger Studio](https://github.com/dcryptoniun).*

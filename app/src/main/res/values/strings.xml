@@ -929,9 +929,9 @@
     <string name="lists_about_demo">Watch the demo on YouTube</string>
     <string name="lists_about_licence">Free software under the GNU GPL v3.</string>
     <!-- %1$s is the first 12 characters of a git commit -->
-    <string name="lists_about_lists_commit">Device lists are adapted from cleanyourtv by Gathin (MIT licence), commit %1$s.</string>
-    <string name="lists_about_lists_pending">Device lists are adapted from cleanyourtv by Gathin (MIT licence), once they have downloaded.</string>
-    <string name="lists_about_libraries">Uses Kadb (Apache 2.0) and spake2-java (GPL v3). Full licence texts are in the NOTICE file.</string>
+    <string name="lists_about_lists_commit">Themes studio, presets &amp; debloat lists inspired by CleanYourTV by Gathin (MIT licence), commit %1$s.</string>
+    <string name="lists_about_lists_pending">Themes studio, presets &amp; debloat lists inspired by CleanYourTV by Gathin (MIT licence).</string>
+    <string name="lists_about_libraries">Inspired by CleanYourTV, Projectivy &amp; FLauncher. Uses Kadb (Apache 2.0) &amp; spake2-java (GPL v3). Full licence texts are in NOTICE.</string>
     <string name="lists_about_close">Close</string>
 
     <!-- AdvancedScreen.kt: Advanced monitor -->

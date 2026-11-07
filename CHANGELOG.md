@@ -1,16 +1,26 @@
 # Changelog
 
 What changed in each cLeanBot release, newest first. Each entry is written
-for the people using the app. Headings are `## <version> — <date>`, where
-`<version>` is the release's `versionName`. One line per change:
+for the people using the app. Headings are ## <version> — <date>, where
+<version> is the release's ersionName. One line per change:
 **New:**, **Improved:** or **Fixed:**, in that order within a section, then a
 plain line of at most about twelve words, ending with a link to its PR.
 
-Changes merged into `dev` collect under `## Unreleased`. A release renames
-that heading to its version and date. A pull request into `main` fails CI
+Changes merged into dev collect under ## Unreleased. A release renames
+that heading to its version and date. A pull request into main fails CI
 until this file has a section for its version.
 
 ## Unreleased
+
+## 1.1.0 — 2026-11-07
+
+- **New:** TV UI Themes & Studio featuring 9 curated visual profiles inspired by CleanYourTV.
+- **New:** Interactive living room 16:9 TV mockup preview with live layout and clock customizer.
+- **New:** Wireless Theme Deployer that compiles CleanYourTV config.json and pushes themes over ADB.
+- **New:** CleanYourTV Curated Debloat Presets (Safe Clean, Ultra Clean, Fire TV, Telemetry Shield).
+- **New:** Living Room TV Toolkit with Sleep Timer, Audio-Only screen standby, and DPI tuner.
+- **New:** TV Launchers Hub supporting CleanYourTV Launcher, Projectivy, FLauncher, and Dispatch.
+- **Improved:** Adaptive navigation suite with first-class Themes & Launchers destination.
 
 ## 1.0.2 — 2026-11-01
 

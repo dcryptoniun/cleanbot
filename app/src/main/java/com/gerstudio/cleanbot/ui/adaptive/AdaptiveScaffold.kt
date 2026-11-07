@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class AppDestination(val label: String, val icon: ImageVector) {
+    Launchers("Themes", Icons.Default.Palette),
     Debloat("Debloat", Icons.Default.CleaningServices),
     Apps("Apps", Icons.Default.Apps),
     Remote("Remote", Icons.Default.Tv),

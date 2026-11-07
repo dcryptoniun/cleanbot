@@ -14,6 +14,10 @@ import com.gerstudio.cleanbot.domain.engine.ApkBackupManager
 import com.gerstudio.cleanbot.domain.engine.DebloatActionResult
 import com.gerstudio.cleanbot.domain.engine.DebloatEngine
 import com.gerstudio.cleanbot.domain.engine.MacroManager
+import com.gerstudio.cleanbot.data.model.TvTheme
+import com.gerstudio.cleanbot.domain.engine.ThemeManager
+import com.gerstudio.cleanbot.domain.engine.TvToolsManager
+import com.gerstudio.cleanbot.domain.engine.SleepTimerState
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -2497,6 +2501,142 @@ class CleanBotViewModel(
                 session.shell("kill -9 ${proc.pid}")
             }
             _notice.value = UiText.Raw("Stopped ${proc.name}")
+        }
+    }
+
+    private var tvToolsManager: TvToolsManager? = null
+    private val _sleepTimerState = MutableStateFlow(SleepTimerState())
+    val sleepTimerState: StateFlow<SleepTimerState> = _sleepTimerState.asStateFlow()
+
+    fun applyTvTheme(theme: TvTheme) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        viewModelScope.launch {
+            val mgr = ThemeManager(appContext, session)
+            val res = mgr.applyThemeToTv(theme)
+            _notice.value = UiText.Raw(res.getOrElse { "Failed to push theme: ${it.message}" })
+        }
+    }
+
+    fun resetTvTheme() {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        viewModelScope.launch {
+            val mgr = ThemeManager(appContext, session)
+            val res = mgr.resetTvThemeToDefault()
+            _notice.value = UiText.Raw(res.getOrElse { "Failed to reset theme: ${it.message}" })
+        }
+    }
+
+    fun setDefaultHome(packageName: String) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        viewModelScope.launch {
+            val mgr = ThemeManager(appContext, session)
+            val res = mgr.setDefaultHomeLauncher(packageName)
+            _notice.value = UiText.Raw(res.getOrElse { "Failed to set default launcher: ${it.message}" })
+        }
+    }
+
+    fun grantLauncherAccessibility(serviceComponent: String) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        viewModelScope.launch {
+            val mgr = ThemeManager(appContext, session)
+            val res = mgr.grantLauncherAccessibility(serviceComponent)
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
+        }
+    }
+
+    fun openLauncherOnTv(packageName: String) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        viewModelScope.launch {
+            val mgr = ThemeManager(appContext, session)
+            mgr.openLauncherOnTv(packageName)
+        }
+    }
+
+    fun startSleepTimer(minutes: Int) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = TvToolsManager(session, viewModelScope)
+        tvToolsManager = tools
+        tools.startSleepTimer(minutes)
+        viewModelScope.launch {
+            tools.sleepTimerState.collect { _sleepTimerState.value = it }
+        }
+        _notice.value = UiText.Raw("Sleep timer set for " + minutes + " minutes")
+    }
+
+    fun cancelSleepTimer() {
+        tvToolsManager?.cancelSleepTimer()
+        _sleepTimerState.value = SleepTimerState()
+        _notice.value = UiText.Raw("Sleep timer canceled")
+    }
+
+    fun toggleAudioOnly() {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        viewModelScope.launch {
+            val res = tools.toggleAudioOnlyScreenOff()
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
+        }
+    }
+
+    fun triggerScreensaver() {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        viewModelScope.launch {
+            val res = tools.triggerScreensaver()
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
+        }
+    }
+
+    fun trimCachesQuick() {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        viewModelScope.launch {
+            val res = tools.trimCaches()
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
+        }
+    }
+
+    fun setDensityQuick(dpi: Int?) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        viewModelScope.launch {
+            val res = tools.setDensity(dpi)
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
+        }
+    }
+
+    fun rebootTv(mode: String) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        viewModelScope.launch {
+            val res = tools.executeReboot(mode)
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
+        }
+    }
+
+    fun secureAdbPort() {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        viewModelScope.launch {
+            val res = tools.secureAdbPort()
+            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
         }
     }
 }

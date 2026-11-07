@@ -65,6 +65,7 @@ import com.gerstudio.cleanbot.data.Proc
 import com.gerstudio.cleanbot.data.model.SafetyClassifier
 import com.gerstudio.cleanbot.data.model.SafetyLevel
 import com.gerstudio.cleanbot.ui.components.BatchDebloatSheet
+import com.gerstudio.cleanbot.ui.components.DebloatPresetCards
 import com.gerstudio.cleanbot.ui.components.MacroChips
 import com.gerstudio.cleanbot.ui.components.SafetyBadge
 import kotlinx.coroutines.launch
@@ -147,6 +148,13 @@ fun DebloatScreen(
                         }
                     },
                     scrollBehavior = scrollBehavior
+                )
+
+                // CleanYourTV Curated Presets
+                DebloatPresetCards(
+                    installedApps = apps,
+                    onApplyPreset = { _, pkgs -> onBatchDebloat(pkgs) },
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
 
                 // Quick ADB Macro Chips

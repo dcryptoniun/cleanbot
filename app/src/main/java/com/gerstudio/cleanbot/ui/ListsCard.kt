@@ -467,6 +467,7 @@ fun AboutDialog(commit: String?, onDismiss: () -> Unit, version: String = instal
                 AboutLink(stringResource(R.string.lists_about_website), SITE, browser::openUri)
                 AboutLink("GitHub", REPO, browser::openUri)
                 AboutLink(stringResource(R.string.lists_about_demo), DEMO_VIDEO, browser::openUri)
+                AboutLink("CleanYourTV (Inspiration & Themes)", "https://github.com/Gathin23/cleanyourtv", browser::openUri)
                 Text(stringResource(R.string.lists_about_licence), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     commit?.let { stringResource(R.string.lists_about_lists_commit, it.take(12)) } ?: stringResource(R.string.lists_about_lists_pending),

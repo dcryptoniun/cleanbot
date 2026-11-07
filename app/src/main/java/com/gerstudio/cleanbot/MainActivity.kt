@@ -226,6 +226,8 @@ fun CleanBotApp(
     var settings by rememberSaveable { mutableStateOf(false) }
     var whatsNew by rememberSaveable { mutableStateOf(false) }
     var access by rememberSaveable { mutableStateOf(false) }
+    var showTvTools by rememberSaveable { mutableStateOf(false) }
+    val sleepTimerState by vm.sleepTimerState.collectAsStateWithLifecycle()
     // Connect again from the logged-out page: which TV, and since when, for its Allow screen.
     var rejoinId by rememberSaveable { mutableStateOf<String?>(null) }
     var rejoinSince by rememberSaveable { mutableStateOf(0L) }
@@ -407,6 +409,16 @@ fun CleanBotApp(
             snackbarHostState = snackbar
         ) {
             when (destination) {
+                AppDestination.Launchers -> {
+                    com.gerstudio.cleanbot.ui.screens.themes.ThemeLauncherScreen(
+                        installedApps = state.device.apps,
+                        onApplyTheme = vm::applyTvTheme,
+                        onResetTheme = vm::resetTvTheme,
+                        onSetDefaultHome = vm::setDefaultHome,
+                        onOpenLauncher = vm::openLauncherOnTv,
+                        onGrantAccessibility = vm::grantLauncherAccessibility,
+                    )
+                }
                 AppDestination.Debloat -> {
                     com.gerstudio.cleanbot.ui.screens.debloat.DebloatScreen(
                         apps = state.device.apps,
@@ -503,10 +515,26 @@ fun CleanBotApp(
                         onExportPreset = {},
                         onImportPreset = {},
                         onResetTv = { vm.openReset(); resetting = true },
+                        onOpenTvTools = { showTvTools = true },
                         onBack = { destination = AppDestination.Debloat },
                     )
                 }
             }
+        }
+
+        if (showTvTools) {
+            com.gerstudio.cleanbot.ui.screens.tools.TvToolsBottomSheet(
+                sleepTimerState = sleepTimerState,
+                onStartSleepTimer = vm::startSleepTimer,
+                onCancelSleepTimer = vm::cancelSleepTimer,
+                onToggleAudioOnly = vm::toggleAudioOnly,
+                onTriggerScreensaver = vm::triggerScreensaver,
+                onTrimCaches = vm::trimCachesQuick,
+                onSetDensity = vm::setDensityQuick,
+                onReboot = vm::rebootTv,
+                onSecureAdb = vm::secureAdbPort,
+                onDismiss = { showTvTools = false }
+            )
         }
     }
 }

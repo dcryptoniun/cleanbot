@@ -3,25 +3,88 @@ Copyright (C) 2026 Ger Studio contributors
 
 Derived from Tellyscope (Copyright (C) 2026 Tellyscope contributors)
 
-Tellyscope is free software: you can redistribute it and/or modify it under
+cLeanBot and Tellyscope are free software: you can redistribute and/or modify them under
 the terms of the GNU General Public License version 3 (see LICENSE).
 
-This product includes or is derived from the following third-party work.
+This product includes, is derived from, or was heavily inspired by the following open-source
+projects, developers, and creative works.
+
+--------------------------------------------------------------------------------
+CleanYourTV — https://github.com/Gathin23/cleanyourtv
+Website & App: https://cleanyour.tv / https://cleanyour.tv/app
+Showcase: https://github.com/Gathin23/cleanyourtv/blob/main/SHOWCASE.md
+License: MIT, Copyright (c) 2026 Gathin
+
+Inspirations and integrations:
+- Debloat package recommendations and curated debloat profiles (Safe Clean, Ultra Clean Home,
+  Fire TV Unchained, Telemetry & Privacy Shield).
+- TV Themes Studio, dock styling options (Glassmorphic, Minimalist, Cyber Glow, OLED Floating),
+  ambient clock styles, and 16:9 TV chassis mockup design.
+- CleanYourTV custom theme config.json schema and wireless deployment via ADB to
+  /storage/emulated/0/Android/data/com.gathin.tvhome/files/config.json.
+- Theme reload broadcast intent trigger (com.gathin.tvhome.RELOAD_THEME).
+
+The MIT License text, as it applies to CleanYourTV:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+Tellyscope — https://github.com/man15h/tellyscope
+Copyright (C) 2026 Manish and Tellyscope contributors
+License: GNU General Public License v3.0
+
+Inspirations and integrations:
+- Foundational Android phone companion architecture, device discovery, remote control,
+  and package management framework.
+- Upstream device debloat definitions and lists from tellyscope-devices.
 
 --------------------------------------------------------------------------------
 Kadb — https://github.com/flyfishxu/Kadb
-License: Apache License 2.0
-Used as a library: the ADB protocol client (connect, pair, shell).
-Kadb is itself based on Dadb (https://github.com/mobile-dev-inc/dadb, Apache-2.0).
+License: Apache License 2.0, Copyright (c) Flyfish233
+Used as a library and inlined pure Kotlin ADB client protocol (connect, pair, shell, sync).
+Kadb is itself based on Dadb (https://github.com/mobile-dev-inc/dadb, Apache-2.0, Mobile-dev Inc).
 
 --------------------------------------------------------------------------------
 spake2-java — https://github.com/Flyfish233/spake2-java
-License: GNU General Public License v3.0
-Used as a library (via Kadb): SPAKE2 key exchange for Android 11+ wireless
-debugging pairing.
+License: GNU General Public License v3.0, Copyright (c) Flyfish233
+Used as a cryptographic library (via Kadb): SPAKE2 password-authenticated key exchange
+for Android 11+ wireless debugging pairing over TLS.
 
 --------------------------------------------------------------------------------
-Material Icons — https://github.com/google/material-design-icons
+Projectivy Launcher — https://github.com/spocky/projengmenu
+Copyright (c) Spocky
+Inspiration for lean, customizable Android TV launcher experience, accessibility service
+button interception, and default home activity switching.
+
+--------------------------------------------------------------------------------
+FLauncher — https://gitlab.com/etiennep/flauncher
+Copyright (c) Étienne Fesser
+License: Apache License 2.0
+Inspiration for open-source, non-commercial, minimalist TV launcher design.
+
+--------------------------------------------------------------------------------
+Dispatch Launcher — https://dispatchlauncher.com
+Copyright (c) Spaul Dhaliwal
+Inspiration for top-shelf media focus, ambient living room preview backdrops, and modern TV UI.
+
+--------------------------------------------------------------------------------
+Material Icons & Material Symbols — https://github.com/google/material-design-icons
 License: Apache License 2.0
 The TV and HDMI (streaming stick) device icons use the path data of the
 "tv" and "settings_input_hdmi" icons, the Debloat button that of
@@ -57,36 +120,10 @@ Store badges in docs/badges/ (README only, not in the app)
 Each is trimmed to its edges and scaled to the same height.
 
 --------------------------------------------------------------------------------
-cleanyourtv — https://github.com/Gathin23/cleanyourtv
-License: MIT, Copyright (c) 2026 Gathin
-Debloat package lists are adapted from this project.
-
---------------------------------------------------------------------------------
-The MIT License text, as it applies to cleanyourtv:
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
---------------------------------------------------------------------------------
 Streaming service logos (downloaded from tellyscope-devices, not in this repo)
 The names and logos of the services in lists/streaming.json are trademarks of
 their owners. They are not covered by the GNU General Public License: they are
-not part of Tellyscope's source, and no licence to them is given. Tellyscope
+not part of cLeanBot's source, and no licence to them is given. cLeanBot
 shows them only to name the app a Remote button opens, and isn't affiliated
 with or endorsed by any of their owners. They are drawn from Wikimedia
 Commons, Simple Icons (https://simpleicons.org) and the services' own
