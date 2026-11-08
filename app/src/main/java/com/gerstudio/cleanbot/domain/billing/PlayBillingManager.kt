@@ -15,6 +15,7 @@ import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.QueryProductDetailsResult
 import com.android.billingclient.api.QueryPurchasesParams
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,7 @@ class PlayBillingManager(
         BillingClient.newBuilder(context)
             .setListener(this)
             .enablePendingPurchases(pendingPurchasesParams)
+            .enableAutoServiceReconnection()
             .build()
     }
 
@@ -159,7 +161,8 @@ class PlayBillingManager(
 
         billingClient.queryProductDetailsAsync(params) { billingResult, queryResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                val detailsMap = queryResult.associateBy { it.productId }
+                val productDetailsList = queryResult.productDetailsList
+                val detailsMap = productDetailsList.associateBy { it.productId }
                 _tipOptions.value = DEFAULT_TIP_OPTIONS.map { tip ->
                     val details = detailsMap[tip.productId]
                     val formatted = details?.oneTimePurchaseOfferDetails?.formattedPrice
@@ -168,7 +171,7 @@ class PlayBillingManager(
                         productDetails = details
                     )
                 }
-                Log.d(TAG, "Loaded ${queryResult.size} product details from Google Play.")
+                Log.d(TAG, "Loaded ${productDetailsList.size} product details from Google Play.")
             } else {
                 Log.w(TAG, "Failed to query product details: ${billingResult.debugMessage}")
             }

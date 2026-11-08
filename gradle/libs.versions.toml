@@ -20,7 +20,7 @@ spake2 = "1.1.1"
 roborazzi = "1.77.0"
 robolectric = "4.17"
 junit = "4.13.2"
-play-billing = "7.1.1"
+play-billing = "9.1.0"
 play-app-update = "2.1.0"
 play-review = "2.0.2"
 
