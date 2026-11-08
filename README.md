@@ -10,7 +10,7 @@ Debloat, speed up, customize, and wirelessly manage your Android TV, Google TV, 
   <img src="https://img.shields.io/badge/Android-8.0%2B-00696B" alt="Android 8.0+">
   <img src="https://img.shields.io/badge/Root-Not%20Needed-00696B" alt="No Root Needed">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local-00696B" alt="100% Local / No Tracking">
-  <img src="https://img.shields.io/badge/Version-1.2.0-00696B" alt="Version 1.2.0">
+  <img src="https://img.shields.io/badge/Version-1.3.0-00696B" alt="Version 1.3.0">
   <img src="https://img.shields.io/badge/Status-Active-00696B" alt="Status: Active">
 </p>
 

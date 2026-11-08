@@ -259,9 +259,14 @@ class AdbDeviceSource(context: Context) : DeviceSource {
         val local = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
         if (!local || caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return emptyList()
-        return cm.getLinkProperties(network)?.linkAddresses.orEmpty()
+        val linkProps = cm.getLinkProperties(network)
+        val selfIps = linkProps?.linkAddresses.orEmpty().mapNotNull { (it.address as? Inet4Address)?.hostAddress }.toSet()
+        val gatewayIps = linkProps?.routes.orEmpty().mapNotNull { it.gateway?.hostAddress }.toSet()
+        val ignored = selfIps + gatewayIps + setOf("10.0.2.2", "127.0.0.1")
+        return linkProps?.linkAddresses.orEmpty()
             .filter { it.address is Inet4Address }
             .flatMap { LanScanner.subnetHosts(it.address as Inet4Address, it.prefixLength) }
+            .filter { it !in ignored }
             .distinct()
     }
 
@@ -291,7 +296,13 @@ class AdbDeviceSource(context: Context) : DeviceSource {
     override fun scan(): Flow<ScanEvent> = flow {
         val hosts = lanHosts()
         if (hosts.isEmpty()) emit(ScanEvent.NoLan)
+        val cm = appContext.getSystemService(ConnectivityManager::class.java)
+        val linkProps = cm?.activeNetwork?.let { cm.getLinkProperties(it) }
+        val selfIps = linkProps?.linkAddresses.orEmpty().mapNotNull { (it.address as? Inet4Address)?.hostAddress }.toSet()
+        val gatewayIps = linkProps?.routes.orEmpty().mapNotNull { it.gateway?.hostAddress }.toSet()
+        val ignored = selfIps + gatewayIps + setOf("10.0.2.2", "127.0.0.1")
         LanScanner(KadbMdnsAndroid(appContext)).scan(hosts).collect { h ->
+            if (h.host in ignored) return@collect
             if (h.kind == AdbHit.Kind.PAIRING) {
                 pairingPorts[h.host] = h.port
                 if (hits.containsKey(h.host)) return@collect

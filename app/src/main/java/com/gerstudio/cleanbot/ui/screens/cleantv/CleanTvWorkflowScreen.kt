@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tv
@@ -94,6 +95,7 @@ fun CleanTvWorkflowScreen(
     onPickLauncherApk: () -> Unit,
     onApplyTheme: (TvTheme) -> Unit,
     onResetTheme: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val recognized = remember(device, installedApps) {
@@ -127,6 +129,7 @@ fun CleanTvWorkflowScreen(
         TvHeaderCard(
             profile = recognized,
             onSwitchTv = onRescanOrSwitch,
+            onOpenSettings = onOpenSettings,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -234,6 +237,7 @@ fun CleanTvWorkflowScreen(
 private fun TvHeaderCard(
     profile: RecognizedTvProfile,
     onSwitchTv: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -289,6 +293,13 @@ private fun TvHeaderCard(
                     text = "${profile.osVersion} • Current: ${profile.currentLauncherName}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             IconButton(onClick = onSwitchTv) {

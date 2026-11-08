@@ -325,6 +325,7 @@ fun CleanBotApp(
             phoneKey = remember { Connector.fingerprint() },
             onLeave = vm::leaveConnect,
             onOpenSupport = { showSupport = true },
+            onOpenSettings = { settings = true },
         )
     } else if (state.report != null) {
         BackHandler { vm.closeReport() }
@@ -400,22 +401,32 @@ fun CleanBotApp(
             purchaseStatus = purchaseStatus,
             onSendTip = vm::launchTipPurchase,
             onDismissStatus = vm::dismissPurchaseStatus,
-            onBack = { showSupport = false }
+            onBack = { showSupport = false },
+            onOpenSettings = { settings = true }
         )
     } else if (settings) {
         BackHandler { settings = false }
-        SettingsScreen(
-            state.listSource,
-            onListSource = vm::setListSource,
-            checkUpdates = state.checkUpdates,
-            alphaBuild = state.alphaBuild,
-            onCheckUpdates = vm::setCheckUpdates,
-            keyHaptics = state.keyHaptics,
-            onKeyHaptics = vm::setKeyHaptics,
-            onReport = { vm.openReport(ReportKind.Problem) },
-            onWhatsNew = { whatsNew = true },
-            back = { settings = false },
-            snackbar = snackbar,
+        com.gerstudio.cleanbot.ui.screens.settings.CleanBotSettingsScreen(
+            preferences = userPreferences,
+            tvMacAddress = state.device.network?.mac,
+            onSetThemeMode = vm::setThemeMode,
+            onSetColorPalette = vm::setColorPalette,
+            onSetLivingRoomAutoDim = vm::setLivingRoomAutoDim,
+            onSetDefaultActionMode = vm::setDefaultActionMode,
+            onSetBackupApkBeforeUninstall = vm::setBackupApkBeforeUninstall,
+            onWakeOnLan = vm::wakeOnLan,
+            onExportPreset = { /* Export preset */ },
+            onImportPreset = { /* Import preset */ },
+            onResetTv = vm::restoreAllDisabledPackages,
+            onOpenTvTools = { settings = false; destination = AppDestination.Tools },
+            onOpenSupport = { settings = false; destination = AppDestination.Support },
+            onRateApp = { currentActivity?.let { vm.requestInAppReview(it, force = true) } },
+            onCheckForUpdate = {
+                currentActivity?.let { act ->
+                    vm.checkForGooglePlayUpdate { info -> vm.startGooglePlayUpdate(act, info) }
+                }
+            },
+            onBack = { settings = false },
         )
     } else if (state.device.launcher != null) {
         BackHandler { vm.closeLauncherFlow() }
@@ -469,6 +480,7 @@ fun CleanBotApp(
                         installedApps = state.device.apps,
                         restorePoints = restorePoints,
                         onRescanOrSwitch = { adding = true; vm.rescan() },
+                        onOpenSettings = { settings = true },
                         onBatchDebloat = { pkgs ->
                             vm.batchDebloat(
                                 packageNames = pkgs,
@@ -578,7 +590,8 @@ fun CleanBotApp(
                         purchaseStatus = purchaseStatus,
                         onSendTip = vm::launchTipPurchase,
                         onDismissStatus = vm::dismissPurchaseStatus,
-                        onBack = null
+                        onBack = null,
+                        onOpenSettings = { settings = true }
                     )
                 }
             }

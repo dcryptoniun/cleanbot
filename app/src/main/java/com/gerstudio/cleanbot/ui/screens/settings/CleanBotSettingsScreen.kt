@@ -436,7 +436,7 @@ fun CleanBotSettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "cLeanBot v1.2.0",
+                    text = "cLeanBot v1.3.0",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )

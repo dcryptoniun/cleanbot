@@ -626,6 +626,7 @@ class CleanBotViewModel(
                     when (e) {
                         is ScanEvent.Progress -> _state.update { it.copy(scan = it.scan.copy(progress = e.progress)) }
                         is ScanEvent.Found -> _state.update { s ->
+                            if (e.hit.ip in setOf("10.0.2.2", "127.0.0.1")) return@update s
                             val known = s.devices.any { it.hit.ip == e.hit.ip }
                             if (known || s.scan.hits.any { it.ip == e.hit.ip }) s
                             else s.copy(scan = s.scan.copy(
@@ -2506,6 +2507,30 @@ class CleanBotViewModel(
             val res = macro.trimAllAppCaches()
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
         }
+    }
+
+    fun setThemeMode(mode: com.gerstudio.cleanbot.data.datastore.ThemeMode) {
+        viewModelScope.launch { preferencesManager?.setThemeMode(mode) }
+    }
+
+    fun setColorPalette(palette: com.gerstudio.cleanbot.data.datastore.ColorPalette) {
+        viewModelScope.launch { preferencesManager?.setColorPalette(palette) }
+    }
+
+    fun setLivingRoomAutoDim(enabled: Boolean) {
+        viewModelScope.launch { preferencesManager?.setLivingRoomAutoDim(enabled) }
+    }
+
+    fun setDefaultActionMode(mode: com.gerstudio.cleanbot.data.model.PackageActionMode) {
+        viewModelScope.launch { preferencesManager?.setDefaultActionMode(mode) }
+    }
+
+    fun setBackupApkBeforeUninstall(enabled: Boolean) {
+        viewModelScope.launch { preferencesManager?.setBackupApkBeforeUninstall(enabled) }
+    }
+
+    fun setKeepDataOnUninstall(enabled: Boolean) {
+        viewModelScope.launch { preferencesManager?.setKeepDataOnUninstall(enabled) }
     }
 
     fun wakeOnLan(macAddress: String) {

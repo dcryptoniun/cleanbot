@@ -12,6 +12,13 @@ until this file has a section for its version.
 
 ## Unreleased
 
+## 1.3.0 — 2026-11-08
+
+- **New:** Direct access to CleanBot Settings & Toolkit from top bar and support screen to customize theme feel, color palettes (Emerald, Cyan, Amethyst, Sunset, AMOLED), and debloat engine. [#301](../../pull/301)
+- **Improved:** TV network scanner filters out self IP, router gateway, and loopback, displaying only actual verified TV devices found on Wi-Fi. [#302](../../pull/302)
+- **Improved:** Streamlined "Add your TV" scan screen to immediately highlight discovered TVs with 1-tap connection. [#303](../../pull/303)
+- **Improved:** Safety debloat state recording with instant 1-tap restore and undo actions. [#304](../../pull/304)
+
 ## 1.2.0 — 2026-11-08
 
 - **New:** Guided 4-step CleanYourTV workflow: Connect TV → Safe Debloat → New Launcher → Custom Theme. [#294](../../pull/294)

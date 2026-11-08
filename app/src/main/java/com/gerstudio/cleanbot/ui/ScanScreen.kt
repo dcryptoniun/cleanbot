@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Favorite
 import com.gerstudio.cleanbot.ui.components.SupportHomeBanner
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -86,6 +87,7 @@ fun ScanScreen(
     phoneKey: String? = null,
     onLeave: (ScanHit) -> Unit = {},
     onOpenSupport: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     var adding by remember { mutableStateOf(false) }
     var help by remember { mutableStateOf(false) }
@@ -124,6 +126,11 @@ fun ScanScreen(
                     if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.scan_back)) }
                 },
                 actions = {
+                    if (onOpenSettings != null) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
                     if (onOpenSupport != null) {
                         IconButton(onClick = onOpenSupport) {
                             Icon(Icons.Default.Favorite, contentDescription = "Support", tint = MaterialTheme.colorScheme.primary)
@@ -159,13 +166,26 @@ fun ScanScreen(
                     )
                 }
             }
-            BrandChips(brand, onPick = { brandName = it.name })
-            GuideSteps(brand, step, onStep = { step = it }) {
+            if (scan.hits.isNotEmpty()) {
+                Text(
+                    text = "Discovered TVs on your Wi-Fi",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 FoundTvs(scan, now, onRescan, onPick = { hit ->
                     val row = scan.rows[hit.ip] ?: RowState.Found
                     if (row == RowState.Found || row == RowState.NotAllowed || row is RowState.Unreachable) onConnect(hit)
                     open = hit.ip
                 })
+            } else {
+                BrandChips(brand, onPick = { brandName = it.name })
+                GuideSteps(brand, step, onStep = { step = it }) {
+                    FoundTvs(scan, now, onRescan, onPick = { hit ->
+                        val row = scan.rows[hit.ip] ?: RowState.Found
+                        if (row == RowState.Found || row == RowState.NotAllowed || row is RowState.Unreachable) onConnect(hit)
+                        open = hit.ip
+                    })
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { adding = true }) {
