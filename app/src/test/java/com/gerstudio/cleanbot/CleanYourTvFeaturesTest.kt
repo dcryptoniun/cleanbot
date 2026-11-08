@@ -100,9 +100,7 @@ class CleanYourTvFeaturesTest {
         val flauncher = launchers.firstOrNull { it.packageName == "me.efesser.flauncher" }
         assertNotNull(flauncher)
         assertTrue(flauncher!!.isOpenSource)
-
-        val dispatch = launchers.firstOrNull { it.packageName == "com.spauldhaliwal.dispatch" }
-        assertNotNull(dispatch)
+        assertEquals(3, launchers.size)
     }
 
     @Test
@@ -111,5 +109,54 @@ class CleanYourTvFeaturesTest {
         assertEquals(4, styles.size)
         val labels = styles.map { it.label }.distinct()
         assertEquals(4, labels.size)
+    }
+
+    @Test
+    fun safetyClassifier_hardProtectsCoreBootAndNetworkPackages() {
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("android", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.android.systemui", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.android.settings", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.android.networkstack", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.android.wifi.resources", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.android.bluetooth", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.gerstudio.cleanbot", false))
+        assertTrue(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.google.android.apps.tv.launcherx", true))
+
+        assertFalse(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.google.android.tvrecommendations", false))
+        assertFalse(com.gerstudio.cleanbot.data.model.SafetyClassifier.isProtectedCore("com.xiaomi.mitv.advertise", false))
+    }
+
+    @Test
+    fun tvBrandRecognizer_identifiesMajorBrandsCorrectly() {
+        val sony = com.gerstudio.cleanbot.domain.engine.TvBrandRecognizer.recognize(
+            device = com.gerstudio.cleanbot.data.Device(
+                id = "sony1",
+                hit = com.gerstudio.cleanbot.data.ScanHit("192.168.1.50", 5555, com.gerstudio.cleanbot.data.ScanKind.Classic, "BRAVIA_4K", "Sony"),
+                state = com.gerstudio.cleanbot.data.DeviceState.Online,
+                model = "BRAVIA 4K VH2",
+                manufacturer = "Sony",
+                android = "10",
+                lastSeen = 1000L,
+                brand = "sony"
+            ),
+            installedApps = emptyList()
+        )
+        assertEquals(com.gerstudio.cleanbot.domain.engine.TvBrandCategory.SONY_BRAVIA, sony.brand)
+
+        val fireTv = com.gerstudio.cleanbot.domain.engine.TvBrandRecognizer.recognize(
+            device = com.gerstudio.cleanbot.data.Device(
+                id = "fire1",
+                hit = com.gerstudio.cleanbot.data.ScanHit("192.168.1.51", 5555, com.gerstudio.cleanbot.data.ScanKind.Classic, "AFTMM", "Amazon"),
+                state = com.gerstudio.cleanbot.data.DeviceState.Online,
+                model = "Fire TV Stick 4K Max",
+                manufacturer = "Amazon",
+                android = "9",
+                lastSeen = 1000L,
+                brand = "amazon"
+            ),
+            installedApps = emptyList()
+        )
+        assertEquals(com.gerstudio.cleanbot.domain.engine.TvBrandCategory.FIRE_TV, fireTv.brand)
+        assertEquals("fire_tv_unchained", fireTv.recommendedPreset.id)
     }
 }

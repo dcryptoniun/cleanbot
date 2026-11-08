@@ -14,6 +14,13 @@ sealed interface DebloatActionResult {
     data class Failed(val error: String) : DebloatActionResult
 }
 
+/**
+ * Safety-First Debloat Engine:
+ * - Strictly Reversible Disabling via `pm disable-user --user 0`.
+ * - System packages are NEVER destructively uninstalled (`pm uninstall --user 0`).
+ * - Core protected packages are strictly blocked from being modified.
+ * - State restoration via `pm enable --user 0`.
+ */
 class DebloatEngine(
     private val context: Context,
     private val session: AdbSession
@@ -22,25 +29,32 @@ class DebloatEngine(
 
     suspend fun executeDebloat(
         packageName: String,
-        mode: PackageActionMode,
+        mode: PackageActionMode = PackageActionMode.DISABLE,
         keepData: Boolean = false,
         backupFirst: Boolean = true,
-        isCurrentLauncher: Boolean = false
+        isCurrentLauncher: Boolean = false,
+        isUserInstalledApp: Boolean = false
     ): DebloatActionResult = withContext(Dispatchers.IO) {
-        val safety = SafetyClassifier.classify(packageName, isCurrentLauncher)
-        if (safety == SafetyLevel.PROTECTED_CORE) {
-            return@withContext DebloatActionResult.Refused("Cannot debloat protected system package: $packageName")
+        if (SafetyClassifier.isProtectedCore(packageName, isCurrentLauncher)) {
+            return@withContext DebloatActionResult.Refused("Blocked: Protected core system component cannot be disabled ($packageName)")
         }
 
-        if (backupFirst && (mode == PackageActionMode.UNINSTALL_USER_0 || mode == PackageActionMode.UNINSTALL_USER_0_KEEP_DATA)) {
+        // System packages are NEVER wiped via uninstall --user 0; they are always safely frozen via disable-user.
+        val effectiveMode = if (!isUserInstalledApp) {
+            PackageActionMode.DISABLE
+        } else {
+            mode
+        }
+
+        if (backupFirst && effectiveMode != PackageActionMode.DISABLE) {
             backupManager.backupPackage(packageName)
         }
 
-        when (mode) {
+        when (effectiveMode) {
             PackageActionMode.DISABLE -> {
                 val res = session.shell("pm disable-user --user 0 $packageName 2>&1")
-                if ("disabled-user" in res.output || "new state: disabled-user" in res.output) {
-                    DebloatActionResult.Success("Disabled $packageName", PackageActionMode.DISABLE)
+                if ("disabled-user" in res.output || "new state: disabled-user" in res.output || "disabled" in res.output.lowercase()) {
+                    DebloatActionResult.Success("Safely disabled $packageName (Reversible)", PackageActionMode.DISABLE)
                 } else if ("SecurityException" in res.output || "not allowed" in res.output) {
                     DebloatActionResult.Refused(res.output.trim())
                 } else {
@@ -49,10 +63,13 @@ class DebloatEngine(
             }
             PackageActionMode.UNINSTALL_USER_0,
             PackageActionMode.UNINSTALL_USER_0_KEEP_DATA -> {
+                if (!isUserInstalledApp) {
+                    return@withContext DebloatActionResult.Refused("Safety Policy: Preinstalled system apps cannot be uninstalled. Use Reversible Disabling instead.")
+                }
                 val keepFlag = if (keepData || mode == PackageActionMode.UNINSTALL_USER_0_KEEP_DATA) "-k " else ""
                 val res = session.shell("pm uninstall ${keepFlag}--user 0 $packageName 2>&1")
                 if ("Success" in res.output || "success" in res.output.lowercase()) {
-                    DebloatActionResult.Success("Uninstalled $packageName for user 0", mode)
+                    DebloatActionResult.Success("Uninstalled user app $packageName", mode)
                 } else {
                     DebloatActionResult.Failed(res.output.trim())
                 }
@@ -60,21 +77,20 @@ class DebloatEngine(
         }
     }
 
-    suspend fun restorePackage(packageName: String, wasDisabled: Boolean): DebloatActionResult = withContext(Dispatchers.IO) {
+    suspend fun restorePackage(packageName: String, wasDisabled: Boolean = true): DebloatActionResult = withContext(Dispatchers.IO) {
         if (wasDisabled) {
             val res = session.shell("pm enable --user 0 $packageName 2>&1")
-            if ("enabled" in res.output || "new state: enabled" in res.output) {
+            if ("enabled" in res.output || "new state: enabled" in res.output || "success" in res.output.lowercase()) {
                 DebloatActionResult.Success("Restored (enabled) $packageName", PackageActionMode.DISABLE)
             } else {
                 DebloatActionResult.Failed(res.output.trim())
             }
         } else {
-            // Restore uninstalled system package
+            // Restore uninstalled package
             val cmdRes = session.shell("cmd package install-existing $packageName 2>&1")
             if ("installed" in cmdRes.output.lowercase() || "package $packageName" in cmdRes.output.lowercase() || "success" in cmdRes.output.lowercase()) {
                 return@withContext DebloatActionResult.Success("Reinstalled $packageName for user 0", PackageActionMode.UNINSTALL_USER_0)
             }
-            // Fallback for older Android TV OS
             val pmRes = session.shell("pm install-existing $packageName 2>&1")
             if ("installed" in pmRes.output.lowercase() || "package $packageName" in pmRes.output.lowercase() || "success" in pmRes.output.lowercase()) {
                 DebloatActionResult.Success("Reinstalled $packageName for user 0", PackageActionMode.UNINSTALL_USER_0)
@@ -85,7 +101,6 @@ class DebloatEngine(
     }
 
     fun estimateStorageSavedMb(packageCount: Int): Int {
-        // Average storage footprint per debloated package is ~45MB in updates and cache
         return packageCount * 45
     }
 }

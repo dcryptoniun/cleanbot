@@ -91,6 +91,9 @@ import com.gerstudio.cleanbot.data.SeenBook
 import com.gerstudio.cleanbot.data.UpdateCheck
 import com.gerstudio.cleanbot.data.UiText
 import com.gerstudio.cleanbot.data.why
+import com.gerstudio.cleanbot.data.model.DebloatRestorePoint
+import com.gerstudio.cleanbot.data.model.SafetyClassifier
+import com.gerstudio.cleanbot.domain.engine.TvBrandRecognizer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -468,6 +471,9 @@ class CleanBotViewModel(
     /** One-shot snackbar lines: the TV refused, went away mid-action, or a restore or copy finished. */
     private val _notice = MutableStateFlow<UiText?>(null)
     val notice: StateFlow<UiText?> = _notice.asStateFlow()
+
+    private val _restorePoints = MutableStateFlow<List<DebloatRestorePoint>>(emptyList())
+    val restorePoints: StateFlow<List<DebloatRestorePoint>> = _restorePoints.asStateFlow()
 
     /** This session's messages, newest last, for a report's log. Kept in memory only. */
     private val sessionLog = ArrayDeque<UiText>()
@@ -2374,7 +2380,8 @@ class CleanBotViewModel(
         packageNames: List<String>,
         mode: PackageActionMode = PackageActionMode.DISABLE,
         keepData: Boolean = false,
-        backupFirst: Boolean = true
+        backupFirst: Boolean = true,
+        presetName: String = "CleanYourTV Safe Clean"
     ) {
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id)
@@ -2382,16 +2389,72 @@ class CleanBotViewModel(
             viewModelScope.launch {
                 val engine = DebloatEngine(appContext, session)
                 var successCount = 0
+                val disabledList = mutableListOf<String>()
                 for (pkg in packageNames) {
-                    if (pkg == "com.gerstudio.cleanbot" || pkg.startsWith("com.gerstudio.cleanbot")) continue
-                    val res = engine.executeDebloat(pkg, mode, keepData, backupFirst)
-                    if (res is DebloatActionResult.Success) successCount++
+                    if (SafetyClassifier.isProtectedCore(pkg, false)) continue
+                    val res = engine.executeDebloat(pkg, PackageActionMode.DISABLE, keepData, backupFirst)
+                    if (res is DebloatActionResult.Success) {
+                        successCount++
+                        disabledList.add(pkg)
+                    }
                 }
-                if (successCount > 0) recordPositiveMilestone()
+                if (successCount > 0) {
+                    recordPositiveMilestone()
+                    val profile = TvBrandRecognizer.recognize(_state.value.selected, _state.value.device.apps)
+                    val point = DebloatRestorePoint(
+                        id = java.util.UUID.randomUUID().toString(),
+                        timestamp = System.currentTimeMillis(),
+                        tvBrand = profile.brand.displayName,
+                        presetName = presetName,
+                        disabledPackages = disabledList
+                    )
+                    _restorePoints.value = listOf(point) + _restorePoints.value
+                }
                 val estMb = engine.estimateStorageSavedMb(successCount)
-                _notice.value = UiText.Raw("Debloated $successCount apps (~${estMb}MB saved)")
+                _notice.value = UiText.Raw("Safely disabled $successCount apps (~${estMb}MB freed)")
                 refreshApps(id)
             }
+        }
+    }
+
+    fun undoRestorePoint(point: DebloatRestorePoint) {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        viewModelScope.launch {
+            val engine = DebloatEngine(appContext, session)
+            var restoredCount = 0
+            for (pkg in point.disabledPackages) {
+                val res = engine.restorePackage(pkg, wasDisabled = true)
+                if (res is DebloatActionResult.Success) restoredCount++
+            }
+            _restorePoints.value = _restorePoints.value.map {
+                if (it.id == point.id) it.copy(active = false) else it
+            }
+            _notice.value = UiText.Raw("1-Tap Undo: Restored $restoredCount apps to active state!")
+            refreshApps(id)
+        }
+    }
+
+    fun restoreAllDisabledPackages() {
+        val id = _state.value.selectedId ?: return
+        val session = source.activeSession(id) ?: return
+        if (appContext == null) return
+        val disabledApps = _state.value.device.apps.filter { !it.enabled && !SafetyClassifier.isProtectedCore(it.packageName, false) }
+        if (disabledApps.isEmpty()) {
+            _notice.value = UiText.Raw("No disabled packages found to restore.")
+            return
+        }
+        viewModelScope.launch {
+            val engine = DebloatEngine(appContext, session)
+            var restoredCount = 0
+            for (app in disabledApps) {
+                val res = engine.restorePackage(app.packageName, wasDisabled = true)
+                if (res is DebloatActionResult.Success) restoredCount++
+            }
+            _restorePoints.value = _restorePoints.value.map { it.copy(active = false) }
+            _notice.value = UiText.Raw("1-Tap Undo: Restored $restoredCount apps to active state!")
+            refreshApps(id)
         }
     }
 

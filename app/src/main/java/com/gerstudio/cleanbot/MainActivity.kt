@@ -93,6 +93,7 @@ import com.gerstudio.cleanbot.ui.connectTitle
 import com.gerstudio.cleanbot.ui.name
 import com.gerstudio.cleanbot.data.datastore.PreferencesManager
 import com.gerstudio.cleanbot.data.datastore.UserPreferences
+import com.gerstudio.cleanbot.data.repository.RemoteFsEntry
 import com.gerstudio.cleanbot.ui.adaptive.AppDestination
 import com.gerstudio.cleanbot.ui.adaptive.CleanBotAdaptiveScaffold
 import com.gerstudio.cleanbot.ui.theme.CleanBotTheme
@@ -211,7 +212,7 @@ fun CleanBotApp(
     prefsManager: PreferencesManager = PreferencesManager(LocalContext.current),
     userPreferences: UserPreferences = UserPreferences()
 ) {
-    var destination by rememberSaveable { mutableStateOf(AppDestination.Debloat) }
+    var destination by rememberSaveable { mutableStateOf(AppDestination.CleanTv) }
     val state by vm.state.collectAsStateWithLifecycle()
     val browser = LocalUriHandler.current
     val context = LocalContext.current
@@ -461,14 +462,30 @@ fun CleanBotApp(
             snackbarHostState = snackbar
         ) {
             when (destination) {
-                AppDestination.Launchers -> {
-                    com.gerstudio.cleanbot.ui.screens.themes.ThemeLauncherScreen(
+                AppDestination.CleanTv -> {
+                    val restorePoints by vm.restorePoints.collectAsStateWithLifecycle()
+                    com.gerstudio.cleanbot.ui.screens.cleantv.CleanTvWorkflowScreen(
+                        device = state.selected,
                         installedApps = state.device.apps,
-                        onApplyTheme = vm::applyTvTheme,
-                        onResetTheme = vm::resetTvTheme,
+                        restorePoints = restorePoints,
+                        onRescanOrSwitch = { adding = true; vm.rescan() },
+                        onBatchDebloat = { pkgs ->
+                            vm.batchDebloat(
+                                packageNames = pkgs,
+                                mode = com.gerstudio.cleanbot.data.model.PackageActionMode.DISABLE,
+                                keepData = false,
+                                backupFirst = false,
+                                presetName = "CleanYourTV Safe Clean"
+                            )
+                        },
+                        onUndoRestorePoint = vm::undoRestorePoint,
+                        onRestoreAllDebloated = vm::restoreAllDisabledPackages,
+                        onInstallLauncher = vm::installLauncher,
                         onSetDefaultHome = vm::setDefaultHome,
-                        onOpenLauncher = vm::openLauncherOnTv,
                         onGrantAccessibility = vm::grantLauncherAccessibility,
+                        onPickLauncherApk = { pickApp.launch(InDownloads.APPS) },
+                        onApplyTheme = vm::applyTvTheme,
+                        onResetTheme = vm::resetTvTheme
                     )
                 }
                 AppDestination.Debloat -> {
@@ -479,7 +496,7 @@ fun CleanBotApp(
                         onEnable = vm::enablePackage,
                         onUninstallUser0 = { pkg -> vm.uninstallUser0(pkg, userPreferences.keepDataOnUninstall, userPreferences.backupApkBeforeUninstall) },
                         onExtractApk = vm::extractApk,
-                        onBatchDebloat = { pkgs -> vm.batchDebloat(pkgs, userPreferences.defaultActionMode, userPreferences.keepDataOnUninstall, userPreferences.backupApkBeforeUninstall) },
+                        onBatchDebloat = { pkgs -> vm.batchDebloat(pkgs, com.gerstudio.cleanbot.data.model.PackageActionMode.DISABLE, userPreferences.keepDataOnUninstall, userPreferences.backupApkBeforeUninstall) },
                         onGrantProjectivy = vm::macroGrantProjectivy,
                         onToggleFps = vm::macroToggleFps,
                         onSetDpi = { vm.macroSetDpi(null) },
@@ -511,7 +528,7 @@ fun CleanBotApp(
                             press = vm::press,
                             type = vm::type,
                             reboot = vm::reboot,
-                            back = { destination = AppDestination.Debloat },
+                            back = { destination = AppDestination.CleanTv },
                             retryRestart = vm::retryRestart,
                             stopWaiting = vm::stopWaiting,
                             launch = vm::launch,
@@ -525,25 +542,21 @@ fun CleanBotApp(
                         ),
                     )
                 }
-                AppDestination.Monitor -> {
-                    com.gerstudio.cleanbot.ui.screens.monitor.MonitorScreen(
-                        snapshot = state.device.snapshot,
-                        processes = state.device.snapshot?.procs.orEmpty(),
-                        onKillProcess = vm::killProcess,
-                    )
-                }
-                AppDestination.Files -> {
+                AppDestination.Tools -> {
                     val currentPath by vm.currentFilePath.collectAsStateWithLifecycle()
                     val entries by vm.fileEntries.collectAsStateWithLifecycle()
                     LaunchedEffect(currentPath) {
                         vm.navigateToFileDirectory(currentPath)
                     }
-                    com.gerstudio.cleanbot.ui.screens.files.TvFileExplorerScreen(
-                        currentPath = currentPath,
-                        entries = entries,
-                        onNavigateTo = vm::navigateToFileDirectory,
+                    com.gerstudio.cleanbot.ui.screens.tools.ToolsHubScreen(
+                        snapshot = state.device.snapshot,
+                        processes = state.device.snapshot?.procs.orEmpty(),
+                        onKillProcess = vm::killProcess,
+                        currentFilePath = currentPath,
+                        fileEntries = entries,
+                        onNavigateToFileDirectory = vm::navigateToFileDirectory,
                         onCreateFolder = vm::createFolder,
-                        onDeleteEntry = vm::deleteFile,
+                        onDeleteFileEntry = vm::deleteFile,
                         onInstallApk = vm::installApkFromPath,
                         onDownloadFile = { entry ->
                             saveFile.launch(entry.name)
@@ -551,6 +564,10 @@ fun CleanBotApp(
                         onUploadFile = {
                             pickFile.launch(arrayOf("*/*"))
                         },
+                        onToggleFps = vm::macroToggleFps,
+                        onSetDpi = { vm.macroSetDpi(null) },
+                        onTrimCaches = vm::macroTrimCaches,
+                        onGrantProjectivy = vm::macroGrantProjectivy
                     )
                 }
                 AppDestination.Support -> {
@@ -562,27 +579,6 @@ fun CleanBotApp(
                         onSendTip = vm::launchTipPurchase,
                         onDismissStatus = vm::dismissPurchaseStatus,
                         onBack = null
-                    )
-                }
-                AppDestination.Settings -> {
-                    val scope = rememberCoroutineScope()
-                    com.gerstudio.cleanbot.ui.screens.settings.CleanBotSettingsScreen(
-                        preferences = userPreferences,
-                        tvMacAddress = state.device.network?.mac,
-                        onSetThemeMode = { mode -> scope.launch { prefsManager.setThemeMode(mode) } },
-                        onSetColorPalette = { palette -> scope.launch { prefsManager.setColorPalette(palette) } },
-                        onSetLivingRoomAutoDim = { dim -> scope.launch { prefsManager.setLivingRoomAutoDim(dim) } },
-                        onSetDefaultActionMode = { mode -> scope.launch { prefsManager.setDefaultActionMode(mode) } },
-                        onSetBackupApkBeforeUninstall = { backup -> scope.launch { prefsManager.setBackupApkBeforeUninstall(backup) } },
-                        onWakeOnLan = vm::wakeOnLan,
-                        onExportPreset = {},
-                        onImportPreset = {},
-                        onResetTv = { vm.openReset(); resetting = true },
-                        onOpenTvTools = { showTvTools = true },
-                        onOpenSupport = { showSupport = true },
-                        onRateApp = { (context as? Activity)?.let { vm.requestInAppReview(it, force = true) } },
-                        onCheckForUpdate = { vm.checkForGooglePlayUpdate() },
-                        onBack = { destination = AppDestination.Debloat },
                     )
                 }
             }

@@ -22,11 +22,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.gerstudio.cleanbot.data.AppInfo
 import com.gerstudio.cleanbot.data.Proc
 import com.gerstudio.cleanbot.data.model.SafetyClassifier
+import com.gerstudio.cleanbot.data.model.SafetyLevel
 import com.gerstudio.cleanbot.ui.components.SafetyBadge
 
 @Composable
@@ -56,6 +58,7 @@ fun PackageInspectorPane(
     onExtractApk: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isProtected = SafetyClassifier.isProtectedCore(app.packageName, !app.removable && app.enabled)
     val safety = SafetyClassifier.classify(app.packageName, !app.removable && app.enabled)
 
     Column(
@@ -125,17 +128,17 @@ fun PackageInspectorPane(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // System vs Data Path & Version
+        // Package Details
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                InspectorRow("Type", if (app.removable) "User Installed App (/data)" else "Preinstalled OEM System App (/system)")
-                InspectorRow("State", if (app.enabled) "Active / Enabled" else "Disabled / Frozen")
+                InspectorRow("Classification", if (app.removable) "User Installed App (/data)" else "Preinstalled OEM System Package (/system)")
+                InspectorRow("Runtime State", if (app.enabled) "Active / Enabled" else "Frozen / Disabled (Reversible)")
                 if (app.version.isNotEmpty()) {
                     InspectorRow("Version", app.version)
                 }
@@ -152,7 +155,7 @@ fun PackageInspectorPane(
         ) {
             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Live Process Performance",
+                    text = "Live TV Process Telemetry",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -167,9 +170,9 @@ fun PackageInspectorPane(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Action Buttons
+        // Actions
         Text(
             text = "Actions",
             style = MaterialTheme.typography.labelMedium,
@@ -178,38 +181,74 @@ fun PackageInspectorPane(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (app.enabled) {
-            Button(
-                onClick = onDisable,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+        if (isProtected) {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Freeze / Disable")
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Core Protected Component",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Essential for TV boot, display, or connectivity. Modifications are strictly locked to prevent bricking.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                }
             }
         } else {
-            Button(
-                onClick = onEnable,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Restore / Enable")
+            if (app.enabled) {
+                Button(
+                    onClick = onDisable,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Freeze / Disable (Reversible)")
+                }
+            } else {
+                Button(
+                    onClick = onEnable,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Restore / Enable (1-Tap)")
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = onUninstallUser0,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Uninstall for User 0 (Reclaim Space)")
+            // Only user-installed apps from /data can be uninstalled. Preinstalled system apps are NEVER uninstalled.
+            if (app.removable) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onUninstallUser0,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Uninstall User App")
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

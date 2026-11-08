@@ -12,14 +12,18 @@ until this file has a section for its version.
 
 ## Unreleased
 
-## 1.2.0 — 2026-11-07
+## 1.2.0 — 2026-11-08
 
+- **New:** Guided 4-step CleanYourTV workflow: Connect TV → Safe Debloat → New Launcher → Custom Theme. [#294](../../pull/294)
+- **New:** Safety-First debloat engine strictly utilizing reversible `pm disable-user --user 0`, eliminating destructive system uninstalls. [#295](../../pull/295)
+- **New:** State Recording with 1-Tap Undo: automated snapshot restore points to revert any debloat in one click. [#296](../../pull/296)
+- **New:** Hard Protected List preventing any modifications to boot, Wi-Fi, audio, Bluetooth, display, or setup wizard packages. [#297](../../pull/297)
+- **New:** Automatic TV brand recognition (Google TV, Sony Bravia, Xiaomi, TCL, Fire TV, Nvidia Shield, Philips) with tailored presets. [#298](../../pull/298)
 - **New:** Support cLeanBot screen with Play Billing consumable tips jar and sponsor links. [#288](../../pull/288)
-- **New:** Dismissible home screen support banner to help sustain active project development. [#289](../../pull/289)
 - **New:** Integrated Google Play In-App Updates with flexible download progress and seamless restart. [#292](../../pull/292)
 - **New:** Integrated Google Play In-App Review with policy-compliant milestone triggers and settings entry. [#293](../../pull/293)
+- **Improved:** Clean, classy, minimal 5-tab adaptive navigation hub with Living Room Tools. [#299](../../pull/299)
 - **Improved:** Automated production keystore signing integration via local configuration. [#290](../../pull/290)
-- **Improved:** Upgraded Google Play Billing Library to latest 7.1.1 version. [#291](../../pull/291)
 
 ## 1.1.0 — 2026-11-07
 

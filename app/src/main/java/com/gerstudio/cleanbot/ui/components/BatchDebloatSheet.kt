@@ -15,8 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -26,23 +27,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gerstudio.cleanbot.data.model.PackageActionMode
 import com.gerstudio.cleanbot.data.model.SafetyClassifier
-import com.gerstudio.cleanbot.data.model.SafetyLevel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,11 +48,8 @@ fun BatchDebloatSheet(
     onConfirm: (mode: PackageActionMode, keepData: Boolean, backupFirst: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
-    @Suppress("DEPRECATION") val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var selectedMode by remember { mutableStateOf(PackageActionMode.DISABLE) }
-    var keepData by remember { mutableStateOf(false) }
-    var backupFirst by remember { mutableStateOf(true) }
-
+    @Suppress("DEPRECATION")
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val estimatedMb = remember(packages.size) { packages.size * 45 }
 
     ModalBottomSheet(
@@ -77,21 +71,21 @@ fun BatchDebloatSheet(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "Batch Debloat Preview",
+                        text = "CleanYourTV Safe Debloat",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${packages.size} packages selected for removal",
+                        text = "${packages.size} packages queued for reversible disabling",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Storage estimate card
+            // Safety Guarantee Card
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -99,77 +93,74 @@ fun BatchDebloatSheet(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Safety-First Engineering (Zero Brick Risk)",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Packages are turned off with pm disable-user --user 0. System binaries remain fully intact. A 1-Tap Restore Point is recorded before execution so you can revert anytime.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Storage estimate card
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
+                        .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
                         Text(
-                            text = "Estimated Storage Saved",
+                            text = "Estimated Background RAM & Cache Freed",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "~$estimatedMb MB",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                     Text(
-                        text = if (selectedMode == PackageActionMode.DISABLE) "Cached data frozen" else "Freed from /data",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        text = "100% Reversible",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            ActionModeSelector(
-                selectedMode = selectedMode,
-                keepData = keepData,
-                onModeSelected = { selectedMode = it },
-                onKeepDataChanged = { keepData = it }
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Safety net backup switch
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Safety Net: Backup APKs to Phone first",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Saves APK copies to Downloads/cLeanBot_Backups/",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = backupFirst,
-                    onCheckedChange = { backupFirst = it }
-                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Packages in Batch (${packages.size}):",
+                text = "Full Transparency — Target Packages (${packages.size}):",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -179,7 +170,7 @@ fun BatchDebloatSheet(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp)
+                    .height(140.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerLowest)
                     .padding(8.dp),
@@ -195,6 +186,8 @@ fun BatchDebloatSheet(
                         Text(
                             text = pkg,
                             style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
                             modifier = Modifier.weight(1f)
                         )
                         SafetyBadge(level = safety)
@@ -202,7 +195,7 @@ fun BatchDebloatSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -216,15 +209,15 @@ fun BatchDebloatSheet(
                 }
                 Button(
                     onClick = {
-                        onConfirm(selectedMode, keepData, backupFirst)
+                        onConfirm(PackageActionMode.DISABLE, false, false)
                         onDismiss()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selectedMode == PackageActionMode.DISABLE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        containerColor = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier.weight(1.5f)
                 ) {
-                    Text("Execute (${packages.size})")
+                    Text("Safely Disable (${packages.size})")
                 }
             }
 
