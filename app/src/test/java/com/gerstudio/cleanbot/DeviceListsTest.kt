@@ -99,11 +99,11 @@ class DeviceListsTest {
         DeviceLists(tmp.root, served("index.json" to index(), "devices/acme-55.json" to device)).let {
             it.list(it.index()!!.devices.first())
         }
-        val offline = DeviceLists(tmp.root) { throw IOException("offline") }
+        val offline = DeviceLists(tmp.root, fetch = { throw IOException("offline") })
         val index = offline.index()
         assertEquals("30626a8e4714", index?.commit)
         assertNotNull(offline.list(index!!.devices.first()))
-        assertNull(DeviceLists(tmp.newFolder()) { throw IOException("offline") }.index())
+        assertNull(DeviceLists(tmp.newFolder(), fetch = { throw IOException("offline") }).index())
     }
 
     @Test fun aPickIsRememberedPerTvAndBeatsAMatch() = runTest {
@@ -289,7 +289,7 @@ class DeviceListsTest {
         assertTrue(logo.contentEquals(lists.logo("netflix")))
         assertNull(lists.logo("hulu"))
 
-        val offline = DeviceLists(tmp.root) { throw IOException("offline") }
+        val offline = DeviceLists(tmp.root, fetch = { throw IOException("offline") })
         assertEquals(launchers.decodeToString(), offline.cachedShared().launchers)
         assertEquals(launchers.decodeToString(), offline.shared().launchers)
         assertTrue(logo.contentEquals(offline.logo("netflix")))
@@ -348,7 +348,7 @@ class DeviceListsTest {
     }
 
     @Test fun resetToDefaultWorksOffline() = runTest {
-        val lists = DeviceLists(tmp.root) { url -> if (url == fork + "index.json") index() else throw IOException("offline") }
+        val lists = DeviceLists(tmp.root, fetch = { url -> if (url == fork + "index.json") index() else throw IOException("offline") })
         assertEquals(SourceResult.Ok, lists.setSource(fork))
         assertEquals(SourceResult.Ok, lists.setSource(null))
         assertNull(lists.custom())

@@ -51,7 +51,11 @@ import com.gerstudio.cleanbot.adb.Tweak
 import com.gerstudio.cleanbot.adb.installKind
 import com.gerstudio.cleanbot.data.Action
 import com.gerstudio.cleanbot.data.AppInfo
+import com.gerstudio.cleanbot.data.BundledCleanYourTvInstaller
+import com.gerstudio.cleanbot.data.CLEAN_YOUR_TV
+import com.gerstudio.cleanbot.data.CLEAN_YOUR_TV_VERSION
 import com.gerstudio.cleanbot.data.Changelog
+import com.gerstudio.cleanbot.data.CleanYourTvInstaller
 import com.gerstudio.cleanbot.data.ConnectResult
 import com.gerstudio.cleanbot.data.Device
 import com.gerstudio.cleanbot.data.DeviceSource
@@ -60,15 +64,11 @@ import com.gerstudio.cleanbot.data.Dock
 import com.gerstudio.cleanbot.data.Docked
 import com.gerstudio.cleanbot.data.HistoryEntry
 import com.gerstudio.cleanbot.data.KeyHaptics
-import com.gerstudio.cleanbot.data.LauncherDownload
-import com.gerstudio.cleanbot.data.LauncherRelease
 import com.gerstudio.cleanbot.data.NetworkInfo
 import com.gerstudio.cleanbot.data.NotAnApp
-import com.gerstudio.cleanbot.data.NotProjectivy
-import com.gerstudio.cleanbot.data.PROJECTIVY
+import com.gerstudio.cleanbot.data.NotCleanYourTv
 import com.gerstudio.cleanbot.data.PhoneStorage
 import com.gerstudio.cleanbot.data.PickedApp
-import com.gerstudio.cleanbot.data.RateLimited
 import com.gerstudio.cleanbot.data.RemoteButtons
 import com.gerstudio.cleanbot.data.ResetApp
 import com.gerstudio.cleanbot.data.ResetFailure
@@ -85,6 +85,7 @@ import com.gerstudio.cleanbot.data.Suggestions
 import com.gerstudio.cleanbot.data.TvAccess
 import com.gerstudio.cleanbot.data.TvSettings
 import com.gerstudio.cleanbot.data.TvTweaks
+import com.gerstudio.cleanbot.data.UnsupportedTvSdkException
 import com.gerstudio.cleanbot.data.Update
 import com.gerstudio.cleanbot.data.FoldBook
 import com.gerstudio.cleanbot.data.SeenBook
@@ -94,6 +95,9 @@ import com.gerstudio.cleanbot.data.why
 import com.gerstudio.cleanbot.data.model.DebloatRestorePoint
 import com.gerstudio.cleanbot.data.model.SafetyClassifier
 import com.gerstudio.cleanbot.domain.engine.TvBrandRecognizer
+import okio.buffer
+import okio.sink
+import okio.source
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -208,39 +212,27 @@ data class ResetUi(
 )
 
 /**
- * Install a home screen: pick a launcher ([Step.Pick]), install it from the Play Store the TV
- * opens at its page ([Step.Waiting], or [Step.NoStore] when the Store didn't open and the user
- * searches by hand), then switch to it ([Step.Installed]). [Step.Left]: the Store closed first.
+ * Unified 1-tap installer & switcher for CleanYourTV Launcher (`com.gathin.tvhome`) bundled in
+ * `assets/tvhome.apk` — works offline across Android TV, Google TV, and Fire OS.
  */
-data class LauncherFlow(val step: Step = Step.Pick, val pkg: String = RECOMMENDED.first().pkg, val fire: FireInstall? = null) {
-    enum class Step { Pick, Waiting, NoStore, Left, Installed }
-
-    /** Fire OS: Projectivy alone, with no Play Store; not Download directly beside the Store ([FireInstall.store]). */
-    val fireOs get() = fire != null && !fire.store
+data class LauncherFlow(
+    val step: Step = Step.Pick,
+    val pkg: String = CLEAN_YOUR_TV,
+    val bundled: CleanYourTvInstallState? = null,
+) {
+    enum class Step { Pick, Installing, Installed }
 }
 
-/**
- * Install Projectivy on Fire OS ([fireInstall]), on [LauncherFlow.Step.Pick] in place of the picker: there's no
- * Play Store, so cLeanBot reads the latest release ([Step.Checking]), asks ([Step.Confirm]), downloads and
- * checks it ([Step.Downloading]), installs it over adb ([Step.Installing]), then moves to [LauncherFlow.Step.Installed].
- * A null [step] is the picker with nothing started. [error] is the TV's refusal, for [Step.Refused].
- * [store]: Download directly on a TV with the Play Store, from the picker ([downloadable]); its steps offer the
- * Store instead, and closing one goes back to the picker.
- * After [Step.NoDownload] the user can download it themselves and pick the file ([picked]): [Step.Reading] checks
- * it, then it installs the same way. [until]: GitHub refused the lookup until then, epoch millis, not the network.
- */
-data class FireInstall(
-    val step: Step? = null,
-    val release: LauncherRelease? = null,
+/** Progress and error state for sideloading the bundled CleanYourTV Launcher v3.4 APK. */
+data class CleanYourTvInstallState(
+    val phase: Phase? = null,
     val progress: Progress? = null,
     val error: UiText? = null,
-    val store: Boolean = false,
-    val picked: Boolean = false,
-    val until: Long? = null,
-    /** The APK's size once it's downloaded or picked, for the steps' first line. */
     val size: Long? = null,
+    val picked: Boolean = false,
+    val enableKeyServices: Boolean = true,
 ) {
-    enum class Step { Checking, Confirm, Downloading, Reading, Installing, NotProjectivy, NoDownload, Refused }
+    enum class Phase { Preparing, Installing, Configuring, InvalidApk, Refused }
 }
 
 /**
@@ -435,11 +427,14 @@ class CleanBotViewModel(
     private val historySeen: SeenBook? = null,
     /** This build and phone, for reports. */
     private val appFacts: AppFacts = AppFacts("unknown", "unknown phone"),
-    /** Projectivy from its developer's GitHub, for Fire OS. */
-    private val launcherDownload: LauncherDownload? = null,
+    /** Bundled CleanYourTV Launcher v3.4 installer (`assets/tvhome.apk`). */
+    private val cleanYourTvInstaller: CleanYourTvInstaller? = null,
     val preferencesManager: PreferencesManager? = null,
     private val appContext: Context? = null,
 ) : ViewModel() {
+
+    private val installer: CleanYourTvInstaller?
+        get() = cleanYourTvInstaller ?: appContext?.let { BundledCleanYourTvInstaller(it) }
 
     private val _state = MutableStateFlow(UiState(now = clock()))
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -464,6 +459,15 @@ class CleanBotViewModel(
     private val _currentFilePath = MutableStateFlow("/sdcard")
     val currentFilePath: StateFlow<String> = _currentFilePath.asStateFlow()
 
+    private val _pendingSaveEntry = MutableStateFlow<RemoteFsEntry?>(null)
+    val pendingSaveEntry: StateFlow<RemoteFsEntry?> = _pendingSaveEntry.asStateFlow()
+
+    private val _fpsOverlayEnabled = MutableStateFlow(false)
+    val fpsOverlayEnabled: StateFlow<Boolean> = _fpsOverlayEnabled.asStateFlow()
+
+    private val _tvDpi = MutableStateFlow<Int?>(null)
+    val tvDpi: StateFlow<Int?> = _tvDpi.asStateFlow()
+
     /** One-shot "done, undo?" messages for the snackbar, with the TV they happened on. */
     private val _done = MutableStateFlow<Done?>(null)
     val done: StateFlow<Done?> = _done.asStateFlow()
@@ -474,6 +478,15 @@ class CleanBotViewModel(
 
     private val _restorePoints = MutableStateFlow<List<DebloatRestorePoint>>(emptyList())
     val restorePoints: StateFlow<List<DebloatRestorePoint>> = _restorePoints.asStateFlow()
+
+    private var tvToolsManager: TvToolsManager? = null
+    private var tvToolsDeviceId: String? = null
+    private var sleepTimerCollectorJob: Job? = null
+    private val _sleepTimerState = MutableStateFlow(SleepTimerState())
+    val sleepTimerState: StateFlow<SleepTimerState> = _sleepTimerState.asStateFlow()
+
+    /** The file whose "save as" picker is open. Kept here so it survives the activity being recreated behind the picker. */
+    private var saving: TvFile? = null
 
     /** This session's messages, newest last, for a report's log. Kept in memory only. */
     private val sessionLog = ArrayDeque<UiText>()
@@ -750,6 +763,19 @@ class CleanBotViewModel(
     fun select(id: String?) {
         stopWatching()
         launcherJob?.cancel()
+        sleepTimerCollectorJob?.cancel()
+        sleepTimerCollectorJob = null
+        if (tvToolsDeviceId != id) {
+            tvToolsManager?.cancelSleepTimer()
+            tvToolsManager = null
+            tvToolsDeviceId = id
+            _sleepTimerState.value = SleepTimerState()
+        }
+        _fpsOverlayEnabled.value = false
+        _tvDpi.value = null
+        _fileEntries.value = emptyList()
+        _currentFilePath.value = "/sdcard"
+        _pendingSaveEntry.value = null
         // A copy still running on this TV keeps its dialog, after a reconnect or a look at another TV.
         val transfer = id?.let(transfers::get)
         _state.value.let { s ->
@@ -821,6 +847,9 @@ class CleanBotViewModel(
                 pruneDock(id, read)
                 val tweaks = source.tweaks(id)
                 updateDevice(id) { it.copy(tweaks = tweaks) }
+                source.activeSession(id)?.let { s ->
+                    runCatching { _fpsOverlayEnabled.value = MacroManager(s).readFpsOverlay() }
+                }
                 loadFiles()
                 while (true) {
                     val net = source.network(id)
@@ -964,251 +993,285 @@ class CleanBotViewModel(
         }
     }
 
-    /** Opens Install a home screen on its picker; not before the launcher list has been downloaded once. */
+    /** Opens the CleanYourTV Launcher v3.4 installer / Home switcher sheet. */
     fun openLauncherFlow() {
         val id = _state.value.selectedId ?: return
-        if (_state.value.selected?.let { fireInstall(it, _state.value.device.apps) } == true) {
-            updateDevice(id) { it.copy(launcher = LauncherFlow(pkg = PROJECTIVY, fire = FireInstall())) }
-            return
-        }
-        if (RECOMMENDED.isEmpty()) {
-            _notice.value = Copy.NO_LAUNCHER_LIST
-            return
-        }
-        updateDevice(id) { it.copy(launcher = LauncherFlow()) }
+        val existing = _state.value.device.apps.firstOrNull { it.packageName == CLEAN_YOUR_TV && it.enabled }
+        val step = if (existing != null) LauncherFlow.Step.Installed else LauncherFlow.Step.Pick
+        updateDevice(id) { it.copy(launcher = LauncherFlow(step = step, pkg = CLEAN_YOUR_TV)) }
     }
 
-    private fun setFire(id: String, f: (FireInstall) -> FireInstall) =
-        updateDevice(id) { d -> d.copy(launcher = d.launcher?.let { l -> l.fire?.let { l.copy(fire = f(it)) } }) }
-
-    /** Download directly is offered beside the Play Store: there's a way to download, as on Fire OS. */
-    val directDownload get() = launcherDownload != null
+    private fun setBundledInstall(id: String, f: (CleanYourTvInstallState) -> CleanYourTvInstallState) =
+        updateDevice(id) { d ->
+            d.copy(launcher = d.launcher?.let { l -> l.copy(bundled = f(l.bundled ?: CleanYourTvInstallState())) })
+        }
 
     /**
-     * Install Projectivy on Fire OS, or Download directly in the picker: reads the latest release, for the
-     * confirm dialog to show where it comes from.
+     * Installs CleanYourTV Launcher v3.4 directly from `assets/tvhome.apk`, runs warm-up and AOT
+     * compilation, optionally enables `HomeKeyService` / `InputKeyService`, and sets it as Home.
      */
-    fun checkProjectivy() {
+    fun installCleanYourTvLauncher(enableKeyServices: Boolean = true) {
         val id = _state.value.selectedId ?: return
-        val download = launcherDownload ?: return
-        val store = _state.value.device.launcher?.let { it.fire?.store ?: true } ?: return
+        if (_state.value.device.launcher?.step == LauncherFlow.Step.Installing) return
         launcherJob?.cancel()
-        updateDevice(id) { d -> d.copy(launcher = d.launcher?.copy(pkg = PROJECTIVY, fire = FireInstall(FireInstall.Step.Checking, store = store))) }
+        updateDevice(id) {
+            it.copy(
+                launcher = LauncherFlow(
+                    step = LauncherFlow.Step.Installing,
+                    pkg = CLEAN_YOUR_TV,
+                    bundled = CleanYourTvInstallState(
+                        phase = CleanYourTvInstallState.Phase.Preparing,
+                        enableKeyServices = enableKeyServices,
+                    ),
+                ),
+            )
+        }
         launcherJob = viewModelScope.launch {
-            val release = try {
-                download.latest()
+            val inst = installer
+            if (inst == null) {
+                // Demo TV / headless test mode without bundled assets: install/enable CleanYourTV cleanly.
+                delay(400)
+                runCatching { source.makeHome(id, CLEAN_YOUR_TV, enableKeyServices) }
+                val apps = runCatching { source.apps(id) }.getOrNull() ?: _state.value.device.apps
+                updateDevice(id) {
+                    it.copy(
+                        apps = apps,
+                        launcher = LauncherFlow(LauncherFlow.Step.Installed, CLEAN_YOUR_TV),
+                    )
+                }
+                _notice.value = UiText.Raw("CleanYourTV Launcher v$CLEAN_YOUR_TV_VERSION active as Home")
+                return@launch
+            }
+            val session = source.activeSession(id)
+            try {
+                inst.checkTvCompatibility(session)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: RateLimited) {
-                return@launch setFire(id) { FireInstall(FireInstall.Step.NoDownload, store = store, until = e.until) }
-            } catch (_: Exception) {
-                return@launch setFire(id) { FireInstall(FireInstall.Step.NoDownload, store = store) }
+            } catch (e: UnsupportedTvSdkException) {
+                updateDevice(id) {
+                    it.copy(
+                        launcher = LauncherFlow(
+                            LauncherFlow.Step.Pick,
+                            CLEAN_YOUR_TV,
+                            CleanYourTvInstallState(
+                                phase = CleanYourTvInstallState.Phase.Refused,
+                                error = UiText.Raw(e.message ?: "TV Android version is too old"),
+                                enableKeyServices = enableKeyServices,
+                            ),
+                        ),
+                    )
+                }
+                return@launch
             }
-            setFire(id) { FireInstall(FireInstall.Step.Confirm, release, store = store) }
+            val app = try {
+                inst.prepareBundled()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: NotCleanYourTv) {
+                updateDevice(id) {
+                    it.copy(
+                        launcher = LauncherFlow(
+                            LauncherFlow.Step.Pick,
+                            CLEAN_YOUR_TV,
+                            CleanYourTvInstallState(
+                                phase = CleanYourTvInstallState.Phase.InvalidApk,
+                                enableKeyServices = enableKeyServices,
+                            ),
+                        ),
+                    )
+                }
+                return@launch
+            } catch (e: Exception) {
+                updateDevice(id) {
+                    it.copy(
+                        launcher = LauncherFlow(
+                            LauncherFlow.Step.Pick,
+                            CLEAN_YOUR_TV,
+                            CleanYourTvInstallState(
+                                phase = CleanYourTvInstallState.Phase.Refused,
+                                error = UiText.Raw(e.message ?: "Could not prepare tvhome.apk"),
+                                enableKeyServices = enableKeyServices,
+                            ),
+                        ),
+                    )
+                }
+                return@launch
+            }
+            installCleanYourTvPickedApp(id, app, enableKeyServices, inst, session, picked = false)
         }
     }
 
-    /**
-     * Download and install: fetches the APK, which must be Projectivy signed by its developer, then installs it
-     * over adb like any sideload. Nothing reaches the TV unless the check passes.
-     */
-    fun installProjectivy() {
+    /** Installs a user-picked `tvhome.apk` update after verifying package identity is `com.gathin.tvhome`. */
+    fun pickedCleanYourTvApk(uri: Uri) {
         val id = _state.value.selectedId ?: return
-        val download = launcherDownload ?: return
-        val release = _state.value.device.launcher?.fire?.takeIf { it.step == FireInstall.Step.Confirm }?.release ?: return
+        val inst = installer ?: return
+        if (_state.value.device.launcher?.step == LauncherFlow.Step.Installing) return
+        val enableKeys = _state.value.device.launcher?.bundled?.enableKeyServices ?: true
         launcherJob?.cancel()
-        setFire(id) { it.copy(step = FireInstall.Step.Downloading, progress = null, picked = false, size = null, until = null) }
+        updateDevice(id) {
+            it.copy(
+                launcher = LauncherFlow(
+                    step = LauncherFlow.Step.Installing,
+                    pkg = CLEAN_YOUR_TV,
+                    bundled = CleanYourTvInstallState(
+                        phase = CleanYourTvInstallState.Phase.Preparing,
+                        picked = true,
+                        enableKeyServices = enableKeys,
+                    ),
+                ),
+            )
+        }
         launcherJob = viewModelScope.launch {
             val app = try {
-                download.fetch(release) { p -> setFire(id) { it.copy(progress = p) } }
+                inst.openPicked(uri)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: NotProjectivy) {
-                return@launch setFire(id) { it.copy(step = FireInstall.Step.NotProjectivy) }
+            } catch (_: NotCleanYourTv) {
+                updateDevice(id) {
+                    it.copy(
+                        launcher = LauncherFlow(
+                            LauncherFlow.Step.Pick,
+                            CLEAN_YOUR_TV,
+                            CleanYourTvInstallState(phase = CleanYourTvInstallState.Phase.InvalidApk, picked = true, enableKeyServices = enableKeys),
+                        ),
+                    )
+                }
+                return@launch
             } catch (_: Exception) {
-                return@launch setFire(id) { it.copy(step = FireInstall.Step.NoDownload) }
+                updateDevice(id) {
+                    it.copy(
+                        launcher = LauncherFlow(
+                            LauncherFlow.Step.Pick,
+                            CLEAN_YOUR_TV,
+                            CleanYourTvInstallState(phase = CleanYourTvInstallState.Phase.Refused, picked = true, error = Copy.CANT_READ_FILE, enableKeyServices = enableKeys),
+                        ),
+                    )
+                }
+                return@launch
             }
-            installFetched(id, app)
+            installCleanYourTvPickedApp(id, app, enableKeys, inst, source.activeSession(id), picked = true)
         }
     }
 
-    /**
-     * Pick the downloaded file, after Couldn't download: the file the user picked, checked like the download,
-     * then installed the same way. Nothing reaches the TV unless it's Projectivy signed by its developer.
-     */
-    fun pickedProjectivy(uri: Uri) {
-        val id = _state.value.selectedId ?: return
-        val download = launcherDownload ?: return
-        // The picker answers on its own timing: only from a step that offers it, never over a running install.
-        val step = _state.value.device.launcher?.fire?.step
-        if (step != FireInstall.Step.NoDownload && step != FireInstall.Step.NotProjectivy && step != FireInstall.Step.Refused) return
-        launcherJob?.cancel()
-        setFire(id) { it.copy(step = FireInstall.Step.Reading, picked = true, progress = null, size = null) }
-        launcherJob = viewModelScope.launch {
-            val app = try {
-                download.open(uri)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: NotProjectivy) {
-                return@launch setFire(id) { it.copy(step = FireInstall.Step.NotProjectivy) }
-            } catch (_: Exception) {
-                return@launch setFire(id) { it.copy(step = FireInstall.Step.Refused, error = Copy.CANT_READ_FILE) }
-            }
-            installFetched(id, app)
+    private suspend fun installCleanYourTvPickedApp(
+        id: String,
+        app: PickedApp,
+        enableKeyServices: Boolean,
+        inst: CleanYourTvInstaller,
+        session: com.gerstudio.cleanbot.adb.AdbSession?,
+        picked: Boolean,
+    ) {
+        setBundledInstall(id) {
+            it.copy(phase = CleanYourTvInstallState.Phase.Installing, size = app.sizeBytes, progress = null, picked = picked)
         }
-    }
-
-    /** Projectivy, downloaded or picked and checked, onto the TV over adb like any sideload. */
-    private suspend fun installFetched(id: String, app: PickedApp) {
-        setFire(id) { it.copy(step = FireInstall.Step.Installing, progress = null, size = app.sizeBytes) }
         val result = try {
-            source.install(id, app.files, app.info, allowDowngrade = false) { p -> setFire(id) { it.copy(progress = p) } }
+            source.install(id, app.files, app.info, allowDowngrade = false) { p ->
+                setBundledInstall(id) { it.copy(progress = p) }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            return setFire(id) { it.copy(step = FireInstall.Step.Refused, error = Copy.SIDELOAD_LOST) }
+            updateDevice(id) {
+                it.copy(
+                    launcher = LauncherFlow(
+                        LauncherFlow.Step.Pick,
+                        CLEAN_YOUR_TV,
+                        CleanYourTvInstallState(phase = CleanYourTvInstallState.Phase.Refused, picked = picked, error = Copy.SIDELOAD_LOST, enableKeyServices = enableKeyServices),
+                    ),
+                )
+            }
+            return
         }
         when (result) {
-            // The steps close with it: Installing would keep them up, and Close waits on that.
-            InstallResult.Done -> launcherInstalled(id, PROJECTIVY) { step ->
-                updateDevice(id) { it.copy(launcher = it.launcher?.let { l -> l.copy(step = step, fire = if (l.fire?.store == true) null else FireInstall()) }) }
+            InstallResult.Done -> {
+                setBundledInstall(id) { it.copy(phase = CleanYourTvInstallState.Phase.Configuring, progress = null) }
+                runCatching { inst.verifyAndPostSetup(session, enableKeyServices) }
+                launcherInstalled(id, CLEAN_YOUR_TV) { step ->
+                    updateDevice(id) { it.copy(launcher = LauncherFlow(step = step, pkg = CLEAN_YOUR_TV, bundled = null)) }
+                }
+                recordPositiveMilestone()
             }
-            is InstallResult.Refused -> setFire(id) {
-                it.copy(step = FireInstall.Step.Refused, error = Copy.installRefused(result.reason, launcherName(PROJECTIVY)))
+            is InstallResult.Refused -> updateDevice(id) {
+                it.copy(
+                    launcher = LauncherFlow(
+                        LauncherFlow.Step.Pick,
+                        CLEAN_YOUR_TV,
+                        CleanYourTvInstallState(
+                            phase = CleanYourTvInstallState.Phase.Refused,
+                            picked = picked,
+                            error = Copy.installRefused(result.reason, launcherName(CLEAN_YOUR_TV)),
+                            enableKeyServices = enableKeyServices,
+                        ),
+                    ),
+                )
             }
         }
     }
 
-    /** X or Stop on a Fire OS step: back to the start, or to the picker after Download directly. Not while the install runs. */
-    fun dismissProjectivy() {
+    fun dismissCleanYourTvInstall() {
         val id = _state.value.selectedId ?: return
-        if (_state.value.device.launcher?.fire?.step == FireInstall.Step.Installing) return
+        if (_state.value.device.launcher?.step == LauncherFlow.Step.Installing) return
         launcherJob?.cancel()
-        updateDevice(id) { d -> d.copy(launcher = d.launcher?.let { l -> l.copy(fire = if (l.fire?.store == true) null else FireInstall()) }) }
+        updateDevice(id) { d -> d.copy(launcher = d.launcher?.copy(step = LauncherFlow.Step.Pick, bundled = null)) }
     }
 
-    /** Not now on the Apps tab's card: it stays away on this TV, and Tweaks keeps the way in. */
+    /** Not now on the Apps tab's card: it stays away on this TV, and CleanYourTV setup keeps the way in. */
     fun hideLauncherCard() {
         val id = _state.value.selectedId ?: return
         updateDevice(id) { it.copy(launcherCardHidden = true) }
         viewModelScope.launch { runCatching { source.hideLauncherCard(id) } }
     }
 
-    /** Back to the picker, [pkg] still chosen; Choose another from a dead end. */
-    fun pickLauncher(pkg: String) {
+    /** Back to the installer card. */
+    fun pickLauncher(pkg: String = CLEAN_YOUR_TV) {
         val id = _state.value.selectedId ?: return
         launcherJob?.cancel()
-        updateDevice(id) { it.copy(launcher = LauncherFlow(LauncherFlow.Step.Pick, pkg)) }
+        updateDevice(id) { it.copy(launcher = LauncherFlow(LauncherFlow.Step.Pick, CLEAN_YOUR_TV)) }
     }
 
     fun closeLauncherFlow() {
         val id = _state.value.selectedId ?: return
-        // An install under way finishes; cutting it off could leave the TV half done.
-        if (_state.value.device.launcher?.fire?.step == FireInstall.Step.Installing) return
+        if (_state.value.device.launcher?.step == LauncherFlow.Step.Installing) return
         launcherJob?.cancel()
         updateDevice(id) { it.copy(launcher = null) }
     }
 
-    /**
-     * Opens the Play Store on the TV at [pkg]'s page, then checks every few seconds whether it's
-     * installed, or the Store has closed without it, which goes back to the picker. Where the Store
-     * didn't open, it keeps checking while the user searches by hand. After [STORE_WAIT_MS] without it,
-     * it stops at [LauncherFlow.Step.Left].
-     *
-     * Known: a Google sign-in or consent screen inside the Store runs as another app
-     * (com.google.android.gms), so it can read as leaving the Store and end the wait early.
-     * Open Store again recovers.
-     */
-    fun installLauncher(pkg: String) {
-        val id = _state.value.selectedId ?: return
-        launcherJob?.cancel()
-        val step = { s: LauncherFlow.Step -> updateDevice(id) { it.copy(launcher = it.launcher?.let { _ -> LauncherFlow(s, pkg) }) } }
-        // Already on the TV, installed since the picker was drawn (Open Store again after the wait): no Store detour.
-        _state.value.device.apps.firstOrNull { it.packageName == pkg && it.enabled }?.let { have ->
-            if (have.homeInstead != null) {
-                step(LauncherFlow.Step.Installed)
-            } else {
-                updateDevice(id) { it.copy(launcher = null) }
-                _notice.value = if (have.home) Copy.launcherIsHome(launcherName(pkg)) else Copy.launcherInstalled(launcherName(pkg))
-            }
-            return
-        }
-        step(LauncherFlow.Step.Waiting)
-        launcherJob = viewModelScope.launch {
-            val opened = try {
-                source.openStore(id, pkg)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                false
-            }
-            if (!opened) step(LauncherFlow.Step.NoStore)
-            var seen = opened
-            repeat((STORE_WAIT_MS / STORE_POLL_MS).toInt()) {
-                delay(STORE_POLL_MS)
-                val now = try {
-                    source.storeState(id, pkg)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    return@repeat // a dropped read: the next one tells
-                }
-                when (now) {
-                    StoreState.Installed -> return@launch launcherInstalled(id, pkg, step)
-                    StoreState.InStore -> seen = true
-                    StoreState.Elsewhere -> if (seen) {
-                        // The Store closed without it: back to the picker, still chosen, and the snackbar says so.
-                        step(LauncherFlow.Step.Pick)
-                        _notice.value = Copy.wasntInstalled(launcherName(pkg))
-                        return@launch
-                    }
-                }
-            }
-            step(LauncherFlow.Step.Left)
-        }
-    }
-
-    /** [pkg] is now on the TV: rereads the apps, then on to Make it the home screen. */
+    /** [pkg] is now on the TV: rereads apps and transitions to Set as Home screen (or notices if already active). */
     private suspend fun launcherInstalled(id: String, pkg: String, step: (LauncherFlow.Step) -> Unit) {
-        val apps = try {
-            source.apps(id)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
+        val apps = runCatching { source.apps(id) }.getOrNull()
         apps?.let { a -> updateDevice(id) { it.copy(apps = a) } }
-        // No way to offer it as Home (the TV asks each time): say where to find it instead.
-        if (apps?.firstOrNull { it.packageName == pkg }?.homeInstead == null) {
-            updateDevice(id) { it.copy(launcher = null) }
-            _notice.value = Copy.launcherInstalled(launcherName(pkg))
-        } else {
-            step(LauncherFlow.Step.Installed)
+        val have = apps?.firstOrNull { it.packageName == pkg }
+        when {
+            have == null || have.homeInstead != null -> step(LauncherFlow.Step.Installed)
+            have.home -> {
+                updateDevice(id) { it.copy(launcher = null) }
+                _notice.value = Copy.launcherIsHome(launcherName(pkg))
+            }
+            else -> step(LauncherFlow.Step.Installed)
         }
     }
 
-    /** Yes on the installed launcher, with its accessibility service or without; the flow closes and the switch runs. */
-    fun switchToLauncher(service: Boolean) {
-        makeHome(_state.value.device.launcher?.pkg ?: return, service)
+    /** Switch Home to CleanYourTV Launcher, with or without key accessibility service. */
+    fun switchToLauncher(service: Boolean = true) {
+        makeHome(_state.value.device.launcher?.pkg ?: CLEAN_YOUR_TV, service)
     }
 
-    /** Make Home on [pkg], from the picker or after its install: the flow closes and the switch runs. */
-    fun makeHome(pkg: String, service: Boolean) {
+    /** Make Home on [pkg]: the flow closes and the switch runs. */
+    fun makeHome(pkg: String, service: Boolean = true) {
         val id = _state.value.selectedId ?: return
         launcherJob?.cancel()
         updateDevice(id) { it.copy(launcher = null) }
         run(pkg, Action.Home, id = id) { source.makeHome(it, pkg, service) }
     }
 
-    /** Open in the picker: shows the launcher [pkg] on the TV. The picker stays. */
-    fun openLauncher(pkg: String) {
+    /** Open the launcher on the TV. */
+    fun openLauncher(pkg: String = CLEAN_YOUR_TV) {
         val label = _state.value.device.apps.firstOrNull { it.packageName == pkg }?.label ?: launcherName(pkg)
         open(pkg, label)
     }
 
-    /** Not now on the installed launcher: where to switch later. */
     fun launcherLater() {
-        val pkg = _state.value.device.launcher?.pkg ?: return
+        val pkg = _state.value.device.launcher?.pkg ?: CLEAN_YOUR_TV
         closeLauncherFlow()
         _notice.value = Copy.launcherLater(launcherName(pkg))
     }
@@ -1469,9 +1532,6 @@ class CleanBotViewModel(
             }
         }
     }
-
-    /** The file whose "save as" picker is open. Kept here so it survives the activity being recreated behind the picker. */
-    private var saving: TvFile? = null
 
     fun saving(file: TvFile) {
         saving = file
@@ -2277,55 +2337,31 @@ class CleanBotViewModel(
     }
 
     fun disablePackage(packageName: String) {
-        val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id)
-        if (session != null && appContext != null) {
-            viewModelScope.launch {
-                val engine = DebloatEngine(appContext, session)
-                val res = engine.executeDebloat(packageName, PackageActionMode.DISABLE)
-                when (res) {
-                    is DebloatActionResult.Success -> {
-                        _notice.value = UiText.Raw(res.message)
-                        refreshApps(id)
-                    }
-                    is DebloatActionResult.Refused -> _notice.value = UiText.Raw(res.reason)
-                    is DebloatActionResult.Failed -> _notice.value = UiText.Raw(res.error)
-                }
-            }
-        } else {
-            run(packageName, Action.Disable)
-        }
+        run(packageName, Action.Disable)
     }
 
     fun enablePackage(packageName: String) {
-        val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id)
-        if (session != null && appContext != null) {
-            viewModelScope.launch {
-                val engine = DebloatEngine(appContext, session)
-                val res = engine.restorePackage(packageName, wasDisabled = true)
-                when (res) {
-                    is DebloatActionResult.Success -> {
-                        _notice.value = UiText.Raw(res.message)
-                        refreshApps(id)
-                    }
-                    is DebloatActionResult.Refused -> _notice.value = UiText.Raw(res.reason)
-                    is DebloatActionResult.Failed -> _notice.value = UiText.Raw(res.error)
-                }
-            }
-        } else {
-            run(packageName, Action.Enable)
-        }
+        run(packageName, Action.Enable)
     }
 
     fun uninstallUser0(packageName: String, keepData: Boolean = false, backupFirst: Boolean = true) {
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id)
+        if (!keepData) {
+            if (backupFirst && session != null && appContext != null) {
+                viewModelScope.launch {
+                    runCatching { ApkBackupManager(appContext, session).backupPackage(packageName) }
+                    run(packageName, Action.UninstallUser0, id = id)
+                }
+            } else {
+                run(packageName, Action.UninstallUser0, id = id)
+            }
+            return
+        }
         if (session != null && appContext != null) {
             viewModelScope.launch {
                 val engine = DebloatEngine(appContext, session)
-                val mode = if (keepData) PackageActionMode.UNINSTALL_USER_0_KEEP_DATA else PackageActionMode.UNINSTALL_USER_0
-                val res = engine.executeDebloat(packageName, mode, keepData, backupFirst)
+                val res = engine.executeDebloat(packageName, PackageActionMode.UNINSTALL_USER_0_KEEP_DATA, keepData = true, backupFirst = backupFirst)
                 when (res) {
                     is DebloatActionResult.Success -> {
                         _notice.value = UiText.Raw(res.message)
@@ -2336,43 +2372,28 @@ class CleanBotViewModel(
                 }
             }
         } else {
-            run(packageName, Action.Uninstall)
+            run(packageName, Action.UninstallUser0, id = id)
         }
     }
 
     fun restorePackage(packageName: String, wasDisabled: Boolean) {
-        val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id)
-        if (session != null && appContext != null) {
-            viewModelScope.launch {
-                val engine = DebloatEngine(appContext, session)
-                val res = engine.restorePackage(packageName, wasDisabled)
-                when (res) {
-                    is DebloatActionResult.Success -> {
-                        _notice.value = UiText.Raw(res.message)
-                        refreshApps(id)
-                    }
-                    is DebloatActionResult.Refused -> _notice.value = UiText.Raw(res.reason)
-                    is DebloatActionResult.Failed -> _notice.value = UiText.Raw(res.error)
-                }
-            }
-        } else {
-            run(packageName, Action.Enable)
-        }
+        run(packageName, if (wasDisabled) Action.Enable else Action.RestoreExisting)
     }
 
     fun extractApk(packageName: String) {
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id)
-        if (session != null && appContext != null) {
-            viewModelScope.launch {
-                val backup = ApkBackupManager(appContext, session)
-                val res = backup.backupPackage(packageName)
-                res.onSuccess { dir ->
-                    _notice.value = UiText.Raw("APK extracted to ${dir.absolutePath}")
-                }.onFailure { err ->
-                    _notice.value = UiText.Raw("APK extract failed: ${err.message}")
-                }
+        if (session == null || appContext == null) {
+            _notice.value = UiText.Raw("Connect a real TV over ADB to extract APKs")
+            return
+        }
+        viewModelScope.launch {
+            val backup = ApkBackupManager(appContext, session)
+            val res = backup.backupPackage(packageName)
+            res.onSuccess { dir ->
+                _notice.value = UiText.Raw("APK backed up to ${dir.name}")
+            }.onFailure { err ->
+                _notice.value = UiText.Raw("APK extract failed: ${err.message}")
             }
         }
     }
@@ -2382,81 +2403,196 @@ class CleanBotViewModel(
         mode: PackageActionMode = PackageActionMode.DISABLE,
         keepData: Boolean = false,
         backupFirst: Boolean = true,
-        presetName: String = "CleanYourTV Safe Clean"
+        presetName: String = "CleanYourTV Safe Clean",
     ) {
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id)
-        if (session != null && appContext != null) {
-            viewModelScope.launch {
-                val engine = DebloatEngine(appContext, session)
-                var successCount = 0
-                val disabledList = mutableListOf<String>()
-                for (pkg in packageNames) {
+        viewModelScope.launch {
+            val succeeded = mutableListOf<String>()
+            source.batch(id) {
+                for (pkg in packageNames.distinct()) {
                     if (SafetyClassifier.isProtectedCore(pkg, false)) continue
-                    val res = engine.executeDebloat(pkg, PackageActionMode.DISABLE, keepData, backupFirst)
-                    if (res is DebloatActionResult.Success) {
-                        successCount++
-                        disabledList.add(pkg)
+                    val ok = when (mode) {
+                        PackageActionMode.DISABLE -> {
+                            runCatching { source.act(id, Action.Disable, pkg) }.isSuccess
+                        }
+                        PackageActionMode.UNINSTALL_USER_0 -> {
+                            if (backupFirst && session != null && appContext != null) {
+                                runCatching { ApkBackupManager(appContext, session).backupPackage(pkg) }
+                            }
+                            runCatching { source.act(id, Action.UninstallUser0, pkg) }.isSuccess
+                        }
+                        PackageActionMode.UNINSTALL_USER_0_KEEP_DATA -> {
+                            if (session != null && appContext != null) {
+                                DebloatEngine(appContext, session).executeDebloat(
+                                    pkg, PackageActionMode.UNINSTALL_USER_0_KEEP_DATA, keepData = true, backupFirst = backupFirst
+                                ) is DebloatActionResult.Success
+                            } else {
+                                runCatching { source.act(id, Action.UninstallUser0, pkg) }.isSuccess
+                            }
+                        }
                     }
+                    if (ok) succeeded += pkg
                 }
-                if (successCount > 0) {
-                    recordPositiveMilestone()
-                    val profile = TvBrandRecognizer.recognize(_state.value.selected, _state.value.device.apps)
-                    val point = DebloatRestorePoint(
-                        id = java.util.UUID.randomUUID().toString(),
-                        timestamp = System.currentTimeMillis(),
-                        tvBrand = profile.brand.displayName,
-                        presetName = presetName,
-                        disabledPackages = disabledList
-                    )
-                    _restorePoints.value = listOf(point) + _restorePoints.value
-                }
-                val estMb = engine.estimateStorageSavedMb(successCount)
-                _notice.value = UiText.Raw("Safely disabled $successCount apps (~${estMb}MB freed)")
-                refreshApps(id)
+            }
+            if (succeeded.isNotEmpty()) {
+                recordPositiveMilestone()
+                val profile = TvBrandRecognizer.recognize(_state.value.selected, _state.value.device.apps)
+                val point = DebloatRestorePoint(
+                    id = java.util.UUID.randomUUID().toString(),
+                    timestamp = System.currentTimeMillis(),
+                    tvBrand = profile.brand.displayName,
+                    presetName = presetName,
+                    disabledPackages = succeeded,
+                )
+                _restorePoints.value = listOf(point) + _restorePoints.value
+            }
+            val apps = runCatching { source.apps(id) }.getOrNull()
+            val history = runCatching { source.history(id) }.getOrNull()
+            updateDevice(id) {
+                it.copy(
+                    apps = apps ?: it.apps,
+                    history = history ?: it.history,
+                )
+            }
+            apps?.let { loadLists(id) { it } }
+            val estMb = succeeded.size * 18
+            _notice.value = if (succeeded.isNotEmpty()) {
+                UiText.Raw("Cleaned ${succeeded.size} packages (~${estMb} MB freed)")
+            } else {
+                UiText.Raw("No matching unprotected packages needed cleaning")
             }
         }
     }
 
     fun undoRestorePoint(point: DebloatRestorePoint) {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        if (appContext == null) return
         viewModelScope.launch {
-            val engine = DebloatEngine(appContext, session)
             var restoredCount = 0
-            for (pkg in point.disabledPackages) {
-                val res = engine.restorePackage(pkg, wasDisabled = true)
-                if (res is DebloatActionResult.Success) restoredCount++
+            source.batch(id) {
+                for (pkg in point.disabledPackages) {
+                    val isCurrentlyDisabled = _state.value.device.apps.any { it.packageName == pkg && !it.enabled }
+                    val action = if (isCurrentlyDisabled) Action.Enable else Action.RestoreExisting
+                    if (runCatching { source.act(id, action, pkg) }.isSuccess) {
+                        restoredCount++
+                    }
+                }
             }
             _restorePoints.value = _restorePoints.value.map {
                 if (it.id == point.id) it.copy(active = false) else it
             }
-            _notice.value = UiText.Raw("1-Tap Undo: Restored $restoredCount apps to active state!")
-            refreshApps(id)
+            val apps = runCatching { source.apps(id) }.getOrNull()
+            val history = runCatching { source.history(id) }.getOrNull()
+            updateDevice(id) { it.copy(apps = apps ?: it.apps, history = history ?: it.history) }
+            apps?.let { loadLists(id) { it } }
+            _notice.value = UiText.Raw("1-Tap Undo: Restored $restoredCount apps!")
         }
     }
 
     fun restoreAllDisabledPackages() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        if (appContext == null) return
-        val disabledApps = _state.value.device.apps.filter { !it.enabled && !SafetyClassifier.isProtectedCore(it.packageName, false) }
+        val disabledApps = _state.value.device.apps.filter {
+            !it.enabled && !SafetyClassifier.isProtectedCore(it.packageName, false)
+        }
         if (disabledApps.isEmpty()) {
             _notice.value = UiText.Raw("No disabled packages found to restore.")
             return
         }
         viewModelScope.launch {
-            val engine = DebloatEngine(appContext, session)
             var restoredCount = 0
-            for (app in disabledApps) {
-                val res = engine.restorePackage(app.packageName, wasDisabled = true)
-                if (res is DebloatActionResult.Success) restoredCount++
+            source.batch(id) {
+                for (app in disabledApps) {
+                    if (runCatching { source.act(id, Action.Enable, app.packageName) }.isSuccess) {
+                        restoredCount++
+                    }
+                }
             }
             _restorePoints.value = _restorePoints.value.map { it.copy(active = false) }
-            _notice.value = UiText.Raw("1-Tap Undo: Restored $restoredCount apps to active state!")
-            refreshApps(id)
+            val apps = runCatching { source.apps(id) }.getOrNull()
+            val history = runCatching { source.history(id) }.getOrNull()
+            updateDevice(id) { it.copy(apps = apps ?: it.apps, history = history ?: it.history) }
+            apps?.let { loadLists(id) { it } }
+            _notice.value = UiText.Raw("Restored $restoredCount disabled apps!")
         }
+    }
+
+    /** Exports currently disabled (non-launcher) packages on the selected TV to portable JSON. */
+    fun exportDebloatPresetJson(): String {
+        val device = _state.value.selected
+        val disabled = _state.value.device.apps
+            .filter { !it.enabled && !it.builtInLauncher && !SafetyClassifier.isProtectedCore(it.packageName, false) }
+            .map { it.packageName }
+            .sorted()
+        val arr = org.json.JSONArray()
+        disabled.forEach { arr.put(it) }
+        return org.json.JSONObject()
+            .put("schema", 1)
+            .put("app", "cLeanBot")
+            .put("deviceName", device?.let(::name) ?: "Android TV")
+            .put("exportedAt", clock())
+            .put("packages", arr)
+            .toString(2)
+    }
+
+    fun exportDebloatPresetToUri(uri: Uri) {
+        val ctx = appContext ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val json = exportDebloatPresetJson()
+                ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                    out.write(json.toByteArray(Charsets.UTF_8))
+                } ?: throw java.io.IOException("Unable to open destination file")
+            }.onSuccess {
+                _notice.value = UiText.Raw("Exported debloat preset")
+            }.onFailure { err ->
+                _notice.value = UiText.Raw("Export failed: ${err.message}")
+            }
+        }
+    }
+
+    fun importDebloatPresetFromUri(uri: Uri) {
+        val ctx = appContext ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val text = runCatching {
+                ctx.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: throw java.io.IOException("Unable to read preset file")
+            }.getOrElse { err ->
+                _notice.value = UiText.Raw("Import failed: ${err.message}")
+                return@launch
+            }
+            val pkgs = parseDebloatPresetPackages(text)
+            if (pkgs.isEmpty()) {
+                _notice.value = UiText.Raw("No valid package names found in preset")
+                return@launch
+            }
+            val pref = preferences.value
+            batchDebloat(
+                packageNames = pkgs,
+                mode = pref.defaultActionMode,
+                keepData = pref.keepDataOnUninstall,
+                backupFirst = pref.backupApkBeforeUninstall,
+                presetName = "Imported Preset (${pkgs.size})",
+            )
+        }
+    }
+
+    private fun parseDebloatPresetPackages(raw: String): List<String> {
+        val pkgRegex = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
+        val trimmed = raw.trim()
+        if (trimmed.startsWith("{")) {
+            val obj = runCatching { org.json.JSONObject(trimmed) }.getOrNull()
+            val arr = obj?.optJSONArray("packages") ?: obj?.optJSONArray("disabledPackages")
+            if (arr != null) {
+                return (0 until arr.length())
+                    .mapNotNull { arr.optString(it).takeIf { p -> pkgRegex.matches(p) } }
+                    .distinct()
+            }
+        }
+        return trimmed.lineSequence()
+            .map { it.substringBefore('#').trim() }
+            .filter { pkgRegex.matches(it) }
+            .distinct()
+            .toList()
     }
 
     private fun refreshApps(id: String) {
@@ -2469,39 +2605,60 @@ class CleanBotViewModel(
         }
     }
 
-    fun macroGrantProjectivy() {
+    fun macroEnableCleanYourTvKeys() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
+        val session = source.activeSession(id)
+        if (session == null) {
+            _notice.value = UiText.Raw("Demo TV: CleanYourTV key services enabled")
+            return
+        }
         viewModelScope.launch {
             val macro = MacroManager(session)
-            val res = macro.autoGrantProjectivyAccessibility()
+            val res = macro.enableCleanYourTvKeyServices(homeKey = true, inputKey = true)
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
         }
     }
 
     fun macroToggleFps() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
+        val next = !_fpsOverlayEnabled.value
+        val session = source.activeSession(id)
+        if (session == null) {
+            _fpsOverlayEnabled.value = next
+            _notice.value = UiText.Raw(if (next) "Demo TV: FPS overlay on" else "Demo TV: FPS overlay off")
+            return
+        }
         viewModelScope.launch {
             val macro = MacroManager(session)
-            val res = macro.toggleFpsOverlay(true)
+            val res = macro.toggleFpsOverlay(next)
+            if (res.isSuccess) _fpsOverlayEnabled.value = next
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
         }
     }
 
     fun macroSetDpi(dpi: Int?) {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
+        val session = source.activeSession(id)
+        if (session == null) {
+            _tvDpi.value = dpi
+            _notice.value = UiText.Raw(dpi?.let { "Demo TV: Density set to ${it}dp" } ?: "Demo TV: Density reset")
+            return
+        }
         viewModelScope.launch {
             val macro = MacroManager(session)
             val res = macro.setTvDensity(dpi)
+            if (res.isSuccess) _tvDpi.value = dpi
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
         }
     }
 
     fun macroTrimCaches() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
+        val session = source.activeSession(id)
+        if (session == null) {
+            clearCaches()
+            return
+        }
         viewModelScope.launch {
             val macro = MacroManager(session)
             val res = macro.trimAllAppCaches()
@@ -2509,12 +2666,8 @@ class CleanBotViewModel(
         }
     }
 
-    fun setThemeMode(mode: com.gerstudio.cleanbot.data.datastore.ThemeMode) {
-        viewModelScope.launch { preferencesManager?.setThemeMode(mode) }
-    }
-
-    fun setColorPalette(palette: com.gerstudio.cleanbot.data.datastore.ColorPalette) {
-        viewModelScope.launch { preferencesManager?.setColorPalette(palette) }
+    fun setHapticsEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesManager?.setHapticsEnabled(enabled) }
     }
 
     fun setLivingRoomAutoDim(enabled: Boolean) {
@@ -2542,12 +2695,99 @@ class CleanBotViewModel(
 
     fun navigateToFileDirectory(path: String) {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
         _currentFilePath.value = path
+        val session = source.activeSession(id)
+        if (session == null) {
+            viewModelScope.launch {
+                val files = runCatching { source.files(id, TvFolder.DOWNLOAD) }.getOrDefault(emptyList())
+                val cleanPath = path.trimEnd('/').ifEmpty { "/" }
+                _fileEntries.value = when (cleanPath) {
+                    "/sdcard" -> listOf(
+                        RemoteFsEntry("Download", "/sdcard/Download", true, 0L, 0L),
+                        RemoteFsEntry("Movies", "/sdcard/Movies", true, 0L, 0L),
+                    ) + files.map { f -> RemoteFsEntry(f.name, "/sdcard/${f.name}", false, f.size, f.modifiedMillis) }
+                    else -> files.map { f -> RemoteFsEntry(f.name, "$cleanPath/${f.name}", false, f.size, f.modifiedMillis) }
+                }
+            }
+            return
+        }
         viewModelScope.launch {
             val repo = FileRepository(session)
-            val entries = repo.listDirectory(path)
-            _fileEntries.value = entries
+            _fileEntries.value = repo.listDirectory(path)
+        }
+    }
+
+    fun requestSaveFile(entry: RemoteFsEntry) {
+        _pendingSaveEntry.value = entry
+    }
+
+    fun cancelSaveFile() {
+        _pendingSaveEntry.value = null
+    }
+
+    fun savePendingFileTo(uri: Uri) {
+        val id = _state.value.selectedId ?: return
+        val entry = _pendingSaveEntry.value ?: return
+        _pendingSaveEntry.value = null
+        val ctx = appContext ?: return
+        val session = source.activeSession(id)
+        if (session == null) {
+            _notice.value = UiText.Raw("Connect a real TV over ADB to download ${entry.name}")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val tmpDir = java.io.File(ctx.cacheDir, "file_pull").apply { mkdirs() }
+            val tempFile = java.io.File(tmpDir, com.gerstudio.cleanbot.adb.Files.safeName(entry.name))
+            try {
+                val repo = FileRepository(session)
+                tempFile.sink().buffer().use { sink -> repo.pullFile(entry.path, sink) }
+                ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                    tempFile.inputStream().use { input -> input.copyTo(out) }
+                } ?: throw java.io.IOException("Could not open destination file")
+                _notice.value = UiText.Raw("Saved ${entry.name} to phone")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _notice.value = UiText.Raw("Download failed: ${e.message}")
+            } finally {
+                tempFile.delete()
+            }
+        }
+    }
+
+    fun uploadFileToCurrentDir(uri: Uri) {
+        val id = _state.value.selectedId ?: return
+        val ctx = appContext ?: return
+        val session = source.activeSession(id)
+        if (session == null) {
+            _notice.value = UiText.Raw("Connect a real TV over ADB to upload files")
+            return
+        }
+        val targetDir = _currentFilePath.value
+        viewModelScope.launch(Dispatchers.IO) {
+            val rawName = ctx.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+            } ?: "upload.bin"
+            val safeName = com.gerstudio.cleanbot.adb.Files.safeName(rawName)
+            val tmpDir = java.io.File(ctx.cacheDir, "file_push").apply { mkdirs() }
+            val tempFile = java.io.File(tmpDir, safeName)
+            try {
+                ctx.contentResolver.openInputStream(uri)?.use { input ->
+                    tempFile.outputStream().use { out -> input.copyTo(out) }
+                } ?: throw java.io.IOException("Cannot read selected file")
+                val repo = FileRepository(session)
+                val remotePath = "${targetDir.trimEnd('/')}/$safeName".replace("//", "/")
+                tempFile.source().buffer().use { src -> repo.pushFile(src, remotePath, tempFile.length()) }
+                _notice.value = UiText.Raw("Uploaded $safeName to $targetDir")
+                navigateToFileDirectory(targetDir)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _notice.value = UiText.Raw("Upload failed: ${e.message}")
+            } finally {
+                tempFile.delete()
+            }
         }
     }
 
@@ -2561,7 +2801,7 @@ class CleanBotViewModel(
                 _notice.value = UiText.Raw("Created folder $name")
                 navigateToFileDirectory(_currentFilePath.value)
             } else {
-                _notice.value = UiText.Raw("Failed to create folder")
+                _notice.value = UiText.Raw("Failed: ${res.exceptionOrNull()?.message ?: "create folder failed"}")
             }
         }
     }
@@ -2576,7 +2816,7 @@ class CleanBotViewModel(
                 _notice.value = UiText.Raw("Deleted $path")
                 navigateToFileDirectory(_currentFilePath.value)
             } else {
-                _notice.value = UiText.Raw("Failed to delete")
+                _notice.value = UiText.Raw("Failed: ${res.exceptionOrNull()?.message ?: "delete failed"}")
             }
         }
     }
@@ -2609,14 +2849,27 @@ class CleanBotViewModel(
         }
     }
 
-    private var tvToolsManager: TvToolsManager? = null
-    private val _sleepTimerState = MutableStateFlow(SleepTimerState())
-    val sleepTimerState: StateFlow<SleepTimerState> = _sleepTimerState.asStateFlow()
+    private fun obtainTvTools(id: String, session: com.gerstudio.cleanbot.adb.AdbSession): TvToolsManager {
+        val existing = tvToolsManager
+        if (existing != null && tvToolsDeviceId == id) return existing
+        existing?.cancelSleepTimer()
+        sleepTimerCollectorJob?.cancel()
+        val created = TvToolsManager(session, viewModelScope)
+        tvToolsManager = created
+        tvToolsDeviceId = id
+        sleepTimerCollectorJob = viewModelScope.launch {
+            created.sleepTimerState.collect { _sleepTimerState.value = it }
+        }
+        return created
+    }
 
     fun applyTvTheme(theme: TvTheme) {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        if (appContext == null) return
+        val session = source.activeSession(id)
+        if (session == null || appContext == null) {
+            _notice.value = UiText.Raw("Demo TV: Applied '${theme.name}' look")
+            return
+        }
         viewModelScope.launch {
             val mgr = ThemeManager(appContext, session)
             val res = mgr.applyThemeToTv(theme)
@@ -2627,8 +2880,11 @@ class CleanBotViewModel(
 
     fun resetTvTheme() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        if (appContext == null) return
+        val session = source.activeSession(id)
+        if (session == null || appContext == null) {
+            _notice.value = UiText.Raw("Demo TV: CleanYourTV theme reset to default")
+            return
+        }
         viewModelScope.launch {
             val mgr = ThemeManager(appContext, session)
             val res = mgr.resetTvThemeToDefault()
@@ -2638,13 +2894,7 @@ class CleanBotViewModel(
 
     fun setDefaultHome(packageName: String) {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        if (appContext == null) return
-        viewModelScope.launch {
-            val mgr = ThemeManager(appContext, session)
-            val res = mgr.setDefaultHomeLauncher(packageName)
-            _notice.value = UiText.Raw(res.getOrElse { "Failed to set default launcher: ${it.message}" })
-        }
+        makeHome(packageName, service = true)
     }
 
     fun grantLauncherAccessibility(serviceComponent: String) {
@@ -2659,25 +2909,18 @@ class CleanBotViewModel(
     }
 
     fun openLauncherOnTv(packageName: String) {
-        val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        if (appContext == null) return
-        viewModelScope.launch {
-            val mgr = ThemeManager(appContext, session)
-            mgr.openLauncherOnTv(packageName)
-        }
+        openLauncher(packageName)
     }
 
     fun startSleepTimer(minutes: Int) {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        val tools = TvToolsManager(session, viewModelScope)
-        tvToolsManager = tools
-        tools.startSleepTimer(minutes)
-        viewModelScope.launch {
-            tools.sleepTimerState.collect { _sleepTimerState.value = it }
+        val session = source.activeSession(id) ?: run {
+            _notice.value = UiText.Raw("Connect a real TV over ADB to run a TV sleep timer")
+            return
         }
-        _notice.value = UiText.Raw("Sleep timer set for " + minutes + " minutes")
+        val tools = obtainTvTools(id, session)
+        tools.startSleepTimer(minutes)
+        _notice.value = UiText.Raw("Sleep timer set for ${minutes.coerceIn(1, 240)} minutes")
     }
 
     fun cancelSleepTimer() {
@@ -2688,8 +2931,11 @@ class CleanBotViewModel(
 
     fun toggleAudioOnly() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        val session = source.activeSession(id) ?: run {
+            setScreenOff(id !in _state.value.screenOff)
+            return
+        }
+        val tools = obtainTvTools(id, session)
         viewModelScope.launch {
             val res = tools.toggleAudioOnlyScreenOff()
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
@@ -2698,8 +2944,11 @@ class CleanBotViewModel(
 
     fun triggerScreensaver() {
         val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        val session = source.activeSession(id) ?: run {
+            _notice.value = UiText.Raw("Demo TV: CleanYourTV screensaver started")
+            return
+        }
+        val tools = obtainTvTools(id, session)
         viewModelScope.launch {
             val res = tools.triggerScreensaver()
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
@@ -2707,29 +2956,21 @@ class CleanBotViewModel(
     }
 
     fun trimCachesQuick() {
-        val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
-        viewModelScope.launch {
-            val res = tools.trimCaches()
-            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
-        }
+        clearCaches()
     }
 
     fun setDensityQuick(dpi: Int?) {
-        val id = _state.value.selectedId ?: return
-        val session = source.activeSession(id) ?: return
-        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
-        viewModelScope.launch {
-            val res = tools.setDensity(dpi)
-            _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
-        }
+        macroSetDpi(dpi)
     }
 
     fun rebootTv(mode: String) {
         val id = _state.value.selectedId ?: return
+        if (mode == "normal") {
+            reboot()
+            return
+        }
         val session = source.activeSession(id) ?: return
-        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        val tools = obtainTvTools(id, session)
         viewModelScope.launch {
             val res = tools.executeReboot(mode)
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })
@@ -2739,7 +2980,7 @@ class CleanBotViewModel(
     fun secureAdbPort() {
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id) ?: return
-        val tools = tvToolsManager ?: TvToolsManager(session, viewModelScope).also { tvToolsManager = it }
+        val tools = obtainTvTools(id, session)
         viewModelScope.launch {
             val res = tools.secureAdbPort()
             _notice.value = UiText.Raw(res.getOrElse { "Failed: ${it.message}" })

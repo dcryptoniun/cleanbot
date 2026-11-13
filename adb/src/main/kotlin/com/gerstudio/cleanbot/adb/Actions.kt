@@ -38,14 +38,24 @@ data class HomeOptions(val current: String?, val others: Set<String>, val defaul
 
 class Actions(private val shell: AdbShell) {
 
-    suspend fun run(action: Action, pkg: String): ActionResult {
+    suspend fun run(
+        action: Action,
+        pkg: String,
+        allowSetupwraithIfSafe: Boolean = false,
+    ): ActionResult {
         require(PACKAGE.matches(pkg)) { "not a package name: $pkg" } // it goes into a shell line
         if (action != Action.ENABLE && action != Action.OPEN && action != Action.RESTORE_EXISTING) {
             // No launcher answer (no `cmd` before Android 7, or an error): we can't tell what's safe.
             val home = homePackages() ?: return ActionResult.Refused(ProtectedReason.UNKNOWN_HOME)
             // Only the name guard asks whether the user installed it; the live Home is refused unasked.
-            val why = Protected.reason(pkg, home)
+            var why = Protected.reason(pkg, home)
                 ?.let { if (it == ProtectedReason.HOME_SCREEN && pkg !in home) Protected.reason(pkg, home, userApp = pkg in userPackages()) else it }
+            if (why == ProtectedReason.SETUP_WIZARD && allowSetupwraithIfSafe && pkg == SETUPWRAITH_PKG) {
+                // Mirror cleanyourtv/tools/disable.sh: only allow disabling setupwraith when dumpsys wifi confirms it does NOT own Wi-Fi.
+                if (setupwraithOwnsWifi() == false) {
+                    why = null
+                }
+            }
             why?.let { return ActionResult.Refused(it) }
         }
         return when (action) {
@@ -294,6 +304,44 @@ class Actions(private val shell: AdbShell) {
     suspend fun homeActivity(pkg: String): String? = launchers()[pkg]
 
     /**
+     * Checks whether `com.google.android.tungsten.setupwraith` currently owns any saved Wi-Fi network
+     * in `dumpsys wifi` (per `cleanyourtv/tools/disable.sh`).
+     *
+     * @return `true` if `setupwraith` owns a saved Wi-Fi profile, `false` if `dumpsys wifi` was read
+     *   and shows no `setupwraith` ownership, or `null` if `dumpsys wifi` produced no usable output.
+     */
+    suspend fun setupwraithOwnsWifi(): Boolean? {
+        val out = runCatching { shell.shell("dumpsys wifi 2>&1").output }.getOrDefault("")
+        if (out.isBlank() || out.contains("Can't find service", ignoreCase = true) || out.contains("Unknown service", ignoreCase = true)) {
+            return null
+        }
+        return SETUPWRAITH_CNAME.containsMatchIn(out)
+    }
+
+    /**
+     * Resolves runtime TV input hardware, Live TV channel (`vnd.android.cursor.item/channel`), and
+     * system `SETTINGS` handler packages on the connected TV (per `cleanyourtv/tools/disable.sh`).
+     * Disabling these can break HDMI input switching, Live TV tuning, or TV Settings access.
+     */
+    suspend fun runtimeProtectedHandlers(): Set<String> {
+        val queries = listOf(
+            "cmd package query-receivers -a android.media.tv.action.TV_INPUT_HARDWARE 2>&1",
+            "cmd package query-activities -a android.intent.action.VIEW -t vnd.android.cursor.item/channel 2>&1",
+            "cmd package query-activities -a android.settings.SETTINGS 2>&1",
+        )
+        return buildSet {
+            for (q in queries) {
+                val out = runCatching { shell.shell(q).output }.getOrDefault("")
+                if (out.contains("Unknown command", ignoreCase = true) || out.contains("Error", ignoreCase = true)) continue
+                for (match in PACKAGE_NAME_ATTR.findAll(out)) {
+                    val pkg = match.groupValues[1]
+                    if (pkg != "android" && pkg != "com.android.tv") add(pkg)
+                }
+            }
+        }
+    }
+
+    /**
      * Every enabled launcher, package to its home activity. Apps protected for another reason
      * aren't launchers, though they may answer Home: TV Settings has a fallback home screen.
      */
@@ -351,6 +399,9 @@ class Actions(private val shell: AdbShell) {
         val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+|android")
         val ACTIVITY = Regex("(${PACKAGE.pattern})/[A-Za-z0-9_.$]+")
         private val CATEGORY = Regex("android\\.intent\\.category\\.[A-Z_]+")
+        private const val SETUPWRAITH_PKG = "com.google.android.tungsten.setupwraith"
+        private val SETUPWRAITH_CNAME = Regex("""cname\s*=\s*com\.google\.android\.tungsten\.setupwraith\b""")
+        private val PACKAGE_NAME_ATTR = Regex("""packageName\s*=\s*(${PACKAGE.pattern})""")
 
         /**
          * Android's SecurityException when ADB tries to turn on an app the TV disabled itself:

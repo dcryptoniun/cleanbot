@@ -3,7 +3,7 @@
 package com.gerstudio.cleanbot.data.model
 
 /**
- * Status of a launcher on the connected TV.
+ * Status of the CleanYourTV launcher on the connected TV.
  */
 enum class LauncherStatus {
     ACTIVE_DEFAULT,
@@ -12,67 +12,49 @@ enum class LauncherStatus {
 }
 
 /**
- * Curated TV Launcher profile that can be directly installed or managed from cLeanBot.
+ * Official TV launcher built directly from Gathin23/cleanyourtv.
  */
 data class TvLauncherInfo(
     val packageName: String,
     val name: String,
+    val versionName: String,
+    val versionCode: Int,
+    val minSdk: Int,
     val tagline: String,
     val description: String,
     val developer: String,
-    val isCleanYourTvOfficial: Boolean = false,
+    val assetApkName: String,
+    val assetSha256: String,
+    val isCleanYourTvOfficial: Boolean = true,
     val isOpenSource: Boolean = true,
-    val playStoreUrl: String? = null,
-    val gitHubUrl: String? = null,
-    val supportsAccessibilityRemap: Boolean = false,
-    val accessibilityServiceComponent: String? = null
+    val gitHubUrl: String = "https://github.com/Gathin23/cleanyourtv",
+    val supportsAccessibilityRemap: Boolean = true,
+    val homeKeyServiceComponent: String = "com.gathin.tvhome/.HomeKeyService",
+    val inputKeyServiceComponent: String = "com.gathin.tvhome/.InputKeyService",
+    val accessibilityServiceComponent: String = "com.gathin.tvhome/.HomeKeyService",
 ) {
     companion object {
         const val CLEAN_YOUR_TV_PKG = "com.gathin.tvhome"
-        const val PROJECTIVY_PKG = "com.spocky.projengmenu"
-        const val FLAUNCHER_PKG = "me.efesser.flauncher"
+        const val CLEAN_YOUR_TV_ACTIVITY = "com.gathin.tvhome/.MainActivity"
+        const val CLEAN_YOUR_TV_ASSET = "tvhome.apk"
+        const val CLEAN_YOUR_TV_SHA256 = "baf6c79b7a8dc6dfa3722ac4c151595229651b3ad93bee54f00f1c126122e967"
+
+        val CLEAN_YOUR_TV = TvLauncherInfo(
+            packageName = CLEAN_YOUR_TV_PKG,
+            name = "CleanYourTV Launcher",
+            versionName = "3.4",
+            versionCode = 13,
+            minSdk = 26,
+            tagline = "Zero Ads · Instant Home · Built-in Themes",
+            description = "Latest v3.4 open-source TV home screen (~586 KB) bundled straight from Gathin23/cleanyourtv. Replaces stock ad carousels with a clean dock, app library, HDMI inputs pill, and wireless theme overlays.",
+            developer = "Gathin23 & CleanYourTV Contributors (MIT)",
+            assetApkName = CLEAN_YOUR_TV_ASSET,
+            assetSha256 = CLEAN_YOUR_TV_SHA256,
+        )
 
         /**
-         * Only launchers that can be directly installed or opened on the TV are listed.
+         * Only the latest CleanYourTV Launcher from Gathin23/cleanyourtv is offered.
          */
-        val CURATED_LAUNCHERS: List<TvLauncherInfo> = listOf(
-            TvLauncherInfo(
-                packageName = CLEAN_YOUR_TV_PKG,
-                name = "CleanYourTV Launcher",
-                tagline = "Clean, Fast, Zero Ads (Apple TV Style)",
-                description = "Ultra-lightweight (<600 KB), zero-ad, privacy-first TV launcher. Features a floating dock, top shelf preview, and dynamic Wi-Fi theme support.",
-                developer = "Gathin23 & CleanYourTV Community",
-                isCleanYourTvOfficial = true,
-                isOpenSource = true,
-                gitHubUrl = "https://github.com/Gathin23/cleanyourtv",
-                supportsAccessibilityRemap = true,
-                accessibilityServiceComponent = "com.gathin.tvhome/com.gathin.tvhome.services.KeyService"
-            ),
-            TvLauncherInfo(
-                packageName = PROJECTIVY_PKG,
-                name = "Projectivy Launcher",
-                tagline = "Deeply Customizable with App Channels",
-                description = "Feature-packed TV launcher with customizable application rows, input shortcuts, and built-in home button override.",
-                developer = "Spocky",
-                isCleanYourTvOfficial = false,
-                isOpenSource = false,
-                playStoreUrl = "https://play.google.com/store/apps/details?id=com.spocky.projengmenu",
-                gitHubUrl = "https://github.com/spocky/miproja1",
-                supportsAccessibilityRemap = true,
-                accessibilityServiceComponent = "com.spocky.projengmenu/com.spocky.projengmenu.services.AccessibilityService"
-            ),
-            TvLauncherInfo(
-                packageName = FLAUNCHER_PKG,
-                name = "FLauncher",
-                tagline = "Pure Open Source Simplicity",
-                description = "Clean, responsive open-source launcher built with Flutter. Categorize apps into custom rows, hide unwanted items, and set custom wallpapers without ads.",
-                developer = "Étienne Fesser",
-                isCleanYourTvOfficial = false,
-                isOpenSource = true,
-                playStoreUrl = "https://play.google.com/store/apps/details?id=me.efesser.flauncher",
-                gitHubUrl = "https://gitlab.com/efesser/flauncher",
-                supportsAccessibilityRemap = false
-            )
-        )
+        val CURATED_LAUNCHERS: List<TvLauncherInfo> = listOf(CLEAN_YOUR_TV)
     }
 }

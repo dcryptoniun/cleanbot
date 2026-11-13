@@ -29,7 +29,7 @@ class LaunchersTest {
 
     /** Named here on purpose, so a reviewer sees any launcher that gets to turn on an accessibility service. */
     @Test fun onlyTheBuiltInLaunchersMayTurnOnAnAccessibilityService() {
-        assertEquals(setOf("com.spocky.projengmenu", "com.overdevs.at4k", "com.spauldhaliwal.dispatch"), ACCESSIBILITY_LAUNCHERS.keys)
+        assertEquals(setOf("com.gathin.tvhome"), ACCESSIBILITY_LAUNCHERS.keys)
     }
 
     @Test fun theRecommendedOnesAreTheLaunchersWithAnAboutLineInFileOrder() {

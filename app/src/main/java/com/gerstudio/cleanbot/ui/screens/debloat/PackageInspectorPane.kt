@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,8 +23,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -56,7 +59,10 @@ fun PackageInspectorPane(
     onEnable: () -> Unit,
     onUninstallUser0: () -> Unit,
     onExtractApk: () -> Unit,
-    modifier: Modifier = Modifier
+    showClose: Boolean = true,
+    onOpenApp: (() -> Unit)? = null,
+    onStopProcess: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val isProtected = SafetyClassifier.isProtectedCore(app.packageName, !app.removable && app.enabled)
     val safety = SafetyClassifier.classify(app.packageName, !app.removable && app.enabled)
@@ -78,8 +84,10 @@ fun PackageInspectorPane(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close Inspector")
+            if (showClose) {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, contentDescription = "Close Inspector")
+                }
             }
         }
 
@@ -253,9 +261,35 @@ fun PackageInspectorPane(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        if (app.enabled && onOpenApp != null) {
+            Button(
+                onClick = onOpenApp,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Open App on TV")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (liveProcess != null && onStopProcess != null) {
+            OutlinedButton(
+                onClick = onStopProcess,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Force Stop Process (${liveProcess.ramMb} MB)")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         OutlinedButton(
             onClick = onExtractApk,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding(),
         ) {
             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))

@@ -89,8 +89,8 @@ fun ScanScreen(
     onOpenSupport: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
 ) {
-    var adding by remember { mutableStateOf(false) }
-    var help by remember { mutableStateOf(false) }
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var help by rememberSaveable { mutableStateOf(false) }
     var brandName by rememberSaveable { mutableStateOf(brands.first().name) }
     val brand = brands.first { it.name == brandName }
     var step by rememberSaveable { mutableIntStateOf(if (scan.hits.isEmpty()) 0 else 2) }
@@ -324,7 +324,7 @@ private fun OffWifi(modifier: Modifier, onOpenWifi: () -> Unit, onAddByIp: () ->
 
 @Composable
 private fun AddByIpDialog(subnet: String?, onDismiss: () -> Unit, onSubmit: (String) -> UiText?) {
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<UiText?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,

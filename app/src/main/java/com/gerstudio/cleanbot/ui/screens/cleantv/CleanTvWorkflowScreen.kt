@@ -2,6 +2,8 @@
 
 package com.gerstudio.cleanbot.ui.screens.cleantv
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +11,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -31,53 +36,67 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gerstudio.cleanbot.data.AppInfo
+import com.gerstudio.cleanbot.data.CLEAN_YOUR_TV_VERSION
 import com.gerstudio.cleanbot.data.Device
+import com.gerstudio.cleanbot.data.DeviceState
+import com.gerstudio.cleanbot.data.Suggestions
 import com.gerstudio.cleanbot.data.model.CuratedDebloatPreset
 import com.gerstudio.cleanbot.data.model.DebloatRestorePoint
+import com.gerstudio.cleanbot.data.model.PackageActionMode
 import com.gerstudio.cleanbot.data.model.SafetyClassifier
 import com.gerstudio.cleanbot.data.model.TvLauncherInfo
 import com.gerstudio.cleanbot.data.model.TvTheme
 import com.gerstudio.cleanbot.domain.engine.RecognizedTvProfile
 import com.gerstudio.cleanbot.domain.engine.TvBrandRecognizer
+import com.gerstudio.cleanbot.ui.CleanYourTvInstallState
+import com.gerstudio.cleanbot.ui.LauncherFlow
+import com.gerstudio.cleanbot.ui.adaptive.FormFactorPreviews
 import com.gerstudio.cleanbot.ui.components.BatchDebloatSheet
 import com.gerstudio.cleanbot.ui.screens.themes.TvMockupPreview
+import com.gerstudio.cleanbot.ui.theme.CleanBotPalette
+import com.gerstudio.cleanbot.ui.theme.CleanBotTheme
+import com.gerstudio.cleanbot.ui.theme.ExpressiveStepContent
+import com.gerstudio.cleanbot.ui.theme.OliveButton
+import com.gerstudio.cleanbot.ui.theme.OliveHeroCard
+import com.gerstudio.cleanbot.ui.theme.SandCard
+import com.gerstudio.cleanbot.ui.theme.SandOutlinedButton
+import com.gerstudio.cleanbot.ui.theme.SignalButton
+import com.gerstudio.cleanbot.ui.theme.SignalProgressBar
+import com.gerstudio.cleanbot.ui.theme.StaggeredCardEntrance
+import com.gerstudio.cleanbot.ui.theme.TacticalPulseBeacon
+import com.gerstudio.cleanbot.ui.theme.rememberCleanBotHaptics
 
 enum class CleanTvStep(val stepNumber: Int, val title: String, val icon: ImageVector) {
-    CONNECT(1, "Connect TV", Icons.Default.Tv),
-    DEBLOAT(2, "Safe Debloat", Icons.Default.CleaningServices),
-    LAUNCHER(3, "New Launcher", Icons.Default.Home),
-    THEME(4, "Custom Theme", Icons.Default.Palette)
+    DEBLOAT(1, "Safe Clean", Icons.Default.CleaningServices),
+    LAUNCHER(2, "Launcher", Icons.Default.Home),
+    THEME(3, "TV Look", Icons.Default.Palette),
 }
 
 @Composable
@@ -85,139 +104,139 @@ fun CleanTvWorkflowScreen(
     device: Device?,
     installedApps: List<AppInfo>,
     restorePoints: List<DebloatRestorePoint>,
+    suggestions: Suggestions? = null,
+    launcherFlow: LauncherFlow? = null,
     onRescanOrSwitch: () -> Unit,
-    onBatchDebloat: (List<String>) -> Unit,
+    onBatchDebloat: (List<String>, PackageActionMode, Boolean, Boolean) -> Unit,
     onUndoRestorePoint: (DebloatRestorePoint) -> Unit,
     onRestoreAllDebloated: () -> Unit,
-    onInstallLauncher: (String) -> Unit,
+    onInstallCleanYourTv: (Boolean) -> Unit,
     onSetDefaultHome: (String) -> Unit,
     onGrantAccessibility: (String) -> Unit,
     onPickLauncherApk: () -> Unit,
     onApplyTheme: (TvTheme) -> Unit,
     onResetTheme: () -> Unit,
+    onOpenModelDebloat: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberCleanBotHaptics()
     val recognized = remember(device, installedApps) {
         TvBrandRecognizer.recognize(device, installedApps)
     }
 
-    var currentStep by remember { mutableStateOf(CleanTvStep.CONNECT) }
-    var showDebloatSheet by remember { mutableStateOf(false) }
-    var selectedTheme by remember { mutableStateOf(TvTheme.CURATED_THEMES.first()) }
+    var currentStepName by rememberSaveable { mutableStateOf(CleanTvStep.DEBLOAT.name) }
+    val currentStep = remember(currentStepName) {
+        CleanTvStep.entries.firstOrNull { it.name == currentStepName } ?: CleanTvStep.DEBLOAT
+    }
+    var showDebloatSheet by rememberSaveable { mutableStateOf(false) }
+    var selectedThemeId by rememberSaveable { mutableStateOf(TvTheme.CURATED_THEMES.first().id) }
+    val selectedTheme = remember(selectedThemeId) {
+        TvTheme.CURATED_THEMES.firstOrNull { it.id == selectedThemeId } ?: TvTheme.CURATED_THEMES.first()
+    }
 
     val disabledAppsCount = remember(installedApps) {
         installedApps.count { !it.enabled && !SafetyClassifier.isProtectedCore(it.packageName, false) }
     }
 
-    // Matching debloat packages for this recognized TV
-    val matchingDebloatPkgs = remember(installedApps, recognized) {
-        installedApps.filter { app ->
-            !SafetyClassifier.isProtectedCore(app.packageName, app.home) &&
-                app.enabled &&
-                (recognized.recommendedPreset.matches(app.packageName) ||
-                    CuratedDebloatPreset.PRESETS.first().matches(app.packageName))
-        }.map { it.packageName }
+    val modelSuggestionPkgs = remember(suggestions) {
+        when (suggestions) {
+            is Suggestions.Ready -> suggestions.groups.flatMap { g ->
+                g.packages.filter { it.ticked || !it.optional }.map { it.pkg }
+            }.distinct()
+            else -> emptyList()
+        }
+    }
+
+    val matchingDebloatPkgs = remember(installedApps, recognized, modelSuggestionPkgs) {
+        val enabledMap = installedApps.associateBy { it.packageName }
+        val fromModel = modelSuggestionPkgs.filter { pkg ->
+            val app = enabledMap[pkg]
+            app != null && app.enabled && !SafetyClassifier.isProtectedCore(pkg, app.home)
+        }
+        if (fromModel.isNotEmpty()) {
+            fromModel
+        } else {
+            installedApps.filter { app ->
+                !SafetyClassifier.isProtectedCore(app.packageName, app.home) &&
+                    app.enabled &&
+                    (recognized.recommendedPreset.matches(app.packageName) ||
+                        CuratedDebloatPreset.PRESETS.first().matches(app.packageName))
+            }.map { it.packageName }
+        }
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(CleanBotPalette.DesertSand)
+            .statusBarsPadding(),
     ) {
-        // Classy Header with Recognized TV Profile
-        TvHeaderCard(
+        TvHeroBanner(
+            device = device,
             profile = recognized,
-            onSwitchTv = onRescanOrSwitch,
-            onOpenSettings = onOpenSettings,
+            matchedListName = (suggestions as? Suggestions.Ready)?.list?.name,
+            disabledCount = disabledAppsCount,
+            onSwitchTv = { haptics.tap(); onRescanOrSwitch() },
+            onOpenSettings = { haptics.tap(); onOpenSettings() },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         )
 
-        // 4-Step Stepper Tabs
-        @Suppress("DEPRECATION")
-        ScrollableTabRow(
-            selectedTabIndex = currentStep.ordinal,
-            edgePadding = 16.dp,
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.primary,
-            divider = {}
-        ) {
-            CleanTvStep.entries.forEach { step ->
-                val isCompleted = when (step) {
-                    CleanTvStep.CONNECT -> device != null
-                    CleanTvStep.DEBLOAT -> disabledAppsCount > 0
-                    CleanTvStep.LAUNCHER -> recognized.isCleanYourTvInstalled || (recognized.currentLauncherPackage != null && recognized.currentLauncherPackage != "com.google.android.apps.tv.launcherx")
-                    CleanTvStep.THEME -> recognized.isCleanYourTvActive
-                }
-
-                Tab(
-                    selected = currentStep == step,
-                    onClick = { currentStep = step },
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isCompleted && currentStep != step) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            Text(
-                                text = "${step.stepNumber}. ${step.title}",
-                                fontWeight = if (currentStep == step) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
-                )
-            }
-        }
-
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            modifier = Modifier.padding(horizontal = 16.dp)
+        StepPillBar(
+            currentStep = currentStep,
+            debloatDone = disabledAppsCount > 0,
+            launcherDone = recognized.isCleanYourTvInstalled,
+            themeDone = recognized.isCleanYourTvActive,
+            onSelect = { step ->
+                haptics.tap()
+                currentStepName = step.name
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
         )
 
-        // Step Content Area
+        Spacer(modifier = Modifier.height(6.dp))
+
         Box(modifier = Modifier.weight(1f)) {
-            when (currentStep) {
-                CleanTvStep.CONNECT -> Step1ConnectView(
-                    device = device,
-                    profile = recognized,
-                    installedApps = installedApps,
-                    onNext = { currentStep = CleanTvStep.DEBLOAT },
-                    onRescan = onRescanOrSwitch
-                )
-                CleanTvStep.DEBLOAT -> Step2DebloatView(
-                    profile = recognized,
-                    matchingPackages = matchingDebloatPkgs,
-                    disabledCount = disabledAppsCount,
-                    restorePoints = restorePoints,
-                    onStartDebloat = { showDebloatSheet = true },
-                    onUndoRestorePoint = onUndoRestorePoint,
-                    onRestoreAll = onRestoreAllDebloated,
-                    onNext = { currentStep = CleanTvStep.LAUNCHER }
-                )
-                CleanTvStep.LAUNCHER -> Step3LauncherView(
-                    profile = recognized,
-                    installedApps = installedApps,
-                    onInstallLauncher = onInstallLauncher,
-                    onSetDefaultHome = onSetDefaultHome,
-                    onGrantAccessibility = onGrantAccessibility,
-                    onPickApk = onPickLauncherApk,
-                    onNext = { currentStep = CleanTvStep.THEME }
-                )
-                CleanTvStep.THEME -> Step4ThemeView(
-                    profile = recognized,
-                    selectedTheme = selectedTheme,
-                    onThemeSelected = { selectedTheme = it },
-                    onApplyTheme = { onApplyTheme(selectedTheme) },
-                    onResetTheme = onResetTheme
-                )
+            ExpressiveStepContent(
+                targetState = currentStep,
+            ) { step ->
+                when (step) {
+                    CleanTvStep.DEBLOAT -> StepDebloatView(
+                        device = device,
+                        profile = recognized,
+                        matchedList = (suggestions as? Suggestions.Ready),
+                        matchingPackages = matchingDebloatPkgs,
+                        disabledCount = disabledAppsCount,
+                        restorePoints = restorePoints,
+                        onStartDebloat = { haptics.tap(); showDebloatSheet = true },
+                        onOpenModelDebloat = onOpenModelDebloat,
+                        onUndoRestorePoint = { point -> haptics.confirm(); onUndoRestorePoint(point) },
+                        onRestoreAll = { haptics.confirm(); onRestoreAllDebloated() },
+                        onNext = { haptics.tap(); currentStepName = CleanTvStep.LAUNCHER.name },
+                    )
+
+                    CleanTvStep.LAUNCHER -> StepLauncherView(
+                        installedApps = installedApps,
+                        launcherFlow = launcherFlow,
+                        onInstallBundled = { keys -> haptics.confirm(); onInstallCleanYourTv(keys) },
+                        onSetDefaultHome = { pkg -> haptics.confirm(); onSetDefaultHome(pkg) },
+                        onGrantAccessibility = { svc -> haptics.tap(); onGrantAccessibility(svc) },
+                        onPickApk = { haptics.tap(); onPickLauncherApk() },
+                        onNext = { haptics.tap(); currentStepName = CleanTvStep.THEME.name },
+                    )
+
+                    CleanTvStep.THEME -> StepThemeView(
+                        isLauncherInstalled = recognized.isCleanYourTvInstalled,
+                        selectedTheme = selectedTheme,
+                        onThemeSelected = { theme -> haptics.tap(); selectedThemeId = theme.id },
+                        onApplyTheme = { haptics.confirm(); onApplyTheme(selectedTheme) },
+                        onResetTheme = { haptics.tap(); onResetTheme() },
+                    )
+                }
             }
         }
     }
@@ -225,493 +244,469 @@ fun CleanTvWorkflowScreen(
     if (showDebloatSheet && matchingDebloatPkgs.isNotEmpty()) {
         BatchDebloatSheet(
             packages = matchingDebloatPkgs,
-            onConfirm = { _, _, _ ->
-                onBatchDebloat(matchingDebloatPkgs)
+            onConfirm = { mode, keepData, backupFirst ->
+                haptics.confirm()
+                showDebloatSheet = false
+                onBatchDebloat(matchingDebloatPkgs, mode, keepData, backupFirst)
             },
-            onDismiss = { showDebloatSheet = false }
+            onDismiss = { showDebloatSheet = false },
         )
     }
 }
 
 @Composable
-private fun TvHeaderCard(
+private fun TvHeroBanner(
+    device: Device?,
     profile: RecognizedTvProfile,
+    matchedListName: String?,
+    disabledCount: Int,
     onSwitchTv: () -> Unit,
-    onOpenSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = modifier
-    ) {
+    val isOnline = device?.state == DeviceState.Online
+    OliveHeroCard(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    profile.brand.icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
+            TacticalPulseBeacon(
+                active = isOnline,
+            )
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = profile.modelName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = profile.brand.displayName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${profile.osVersion} • Current: ${profile.currentLauncherName}",
+                    text = device?.nickname ?: device?.model ?: profile.modelName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = CleanBotPalette.OnOliveDrab,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = buildString {
+                        append(profile.osVersion)
+                        append(" • ")
+                        append(profile.currentLauncherName)
+                        if (disabledCount > 0) append(" • $disabledCount cleaned")
+                    },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = CleanBotPalette.DesertSand,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-            IconButton(onClick = onOpenSettings) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (matchedListName != null) {
+                    Text(
+                        text = "cleanyourtv list: $matchedListName",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CleanBotPalette.SignalYellow,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             IconButton(onClick = onSwitchTv) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = "Switch TV",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.Default.Refresh, contentDescription = "Switch TV", tint = CleanBotPalette.OnOliveDrab)
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = CleanBotPalette.OnOliveDrab)
             }
         }
     }
 }
 
 @Composable
-private fun Step1ConnectView(
-    device: Device?,
-    profile: RecognizedTvProfile,
-    installedApps: List<AppInfo>,
-    onNext: () -> Unit,
-    onRescan: () -> Unit
+private fun StepPillBar(
+    currentStep: CleanTvStep,
+    debloatDone: Boolean,
+    launcherDone: Boolean,
+    themeDone: Boolean,
+    onSelect: (CleanTvStep) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        CleanTvStep.entries.forEach { step ->
+            val selected = step == currentStep
+            val completed = when (step) {
+                CleanTvStep.DEBLOAT -> debloatDone
+                CleanTvStep.LAUNCHER -> launcherDone
+                CleanTvStep.THEME -> themeDone
+            }
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = when {
+                    selected -> CleanBotPalette.SignalYellow
+                    completed -> CleanBotPalette.OliveDrab.copy(alpha = 0.14f)
+                    else -> CleanBotPalette.DesertSandBright
+                },
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (selected) CleanBotPalette.SignalYellow else CleanBotPalette.SandOutline,
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { onSelect(step) },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
-                        Icons.Default.CheckCircle,
+                        imageVector = if (completed && !selected) Icons.Default.CheckCircle else step.icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
+                        tint = when {
+                            selected -> CleanBotPalette.OnSignalYellow
+                            completed -> CleanBotPalette.OliveDrab
+                            else -> CleanBotPalette.SandMutedInk
+                        },
+                        modifier = Modifier.size(16.dp),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Wireless ADB Connection Active",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = "${step.stepNumber}. ${step.title}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (selected) CleanBotPalette.OnSignalYellow else CleanBotPalette.SandInk,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-                val addressText = if (device != null) "${device.hit.ip}:${device.hit.port}" else "Living Room TV"
-                Text(
-                    text = "Connected over local Wi-Fi to $addressText. No computer, cables, or root privileges needed.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-        }
-
-        // Hardware & Recognition Profile
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "TV Recognition Details",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                InfoRow("Brand & Ecosystem", profile.brand.displayName)
-                InfoRow("Hardware Model", profile.modelName)
-                InfoRow("Operating System", profile.osVersion)
-                InfoRow("Detected Packages", "${installedApps.size} total apps installed")
-                InfoRow("Stock Launcher", profile.currentLauncherName)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = onNext,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("Proceed to Step 2: Safe Debloat")
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Step2DebloatView(
+private fun StepDebloatView(
+    device: Device?,
     profile: RecognizedTvProfile,
+    matchedList: Suggestions.Ready?,
     matchingPackages: List<String>,
     disabledCount: Int,
     restorePoints: List<DebloatRestorePoint>,
     onStartDebloat: () -> Unit,
+    onOpenModelDebloat: (() -> Unit)?,
     onUndoRestorePoint: (DebloatRestorePoint) -> Unit,
     onRestoreAll: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
 ) {
+    val scrollState = rememberScrollState()
+    val estMb = matchingPackages.size * 18
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Safety Guarantee
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Shield,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Safety-First: Reversible Disabling",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "cLeanBot never destructively uninstalls system files. Packages are safely frozen with pm disable-user --user 0. Nothing is deleted and changes are 100% reversible.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                    )
-                }
-            }
-        }
-
-        // 1-Tap Undo Restore Point Card
-        if (disabledCount > 0) {
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+        StaggeredCardEntrance(delayMillis = 0) {
+            SandCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column {
-                            Text(
-                                text = "TV Restore Point Available",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = "$disabledCount packages currently disabled",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                            )
-                        }
-                        FilledTonalButton(
-                            onClick = {
-                                if (restorePoints.isNotEmpty()) {
-                                    onUndoRestorePoint(restorePoints.first())
-                                } else {
-                                    onRestoreAll()
-                                }
-                            }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("1-Tap Undo")
-                        }
-                    }
-                }
-            }
-        }
-
-        // CleanYourTV Curated Debloat Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        profile.recommendedPreset.icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
                         Text(
-                            text = "${profile.recommendedPreset.title} (${profile.brand.displayName})",
+                            text = matchedList?.list?.name ?: "${profile.recommendedPreset.title} (${profile.brand.displayName})",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
                         )
-                        Text(
-                            text = profile.recommendedPreset.subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = CleanBotPalette.OliveDrab,
+                        ) {
+                            Text(
+                                text = if (matchedList != null) "cleanyourtv Match" else "Smart Preset",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = CleanBotPalette.OnOliveDrab,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
                     }
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = profile.recommendedPreset.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(14.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Text(
-                        text = "${matchingPackages.size} target packages found on TV",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
+                        text = if (matchedList != null) {
+                            "Matched directly from Gathin23/cleanyourtv catalog (${matchedList.groups.size} groups). Tested on ${matchedList.list.testedOs ?: profile.osVersion}."
+                        } else {
+                            profile.recommendedPreset.description
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CleanBotPalette.SandMutedInk,
                     )
-                    Button(
-                        onClick = onStartDebloat,
-                        enabled = matchingPackages.isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(Icons.Default.CleaningServices, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Debloat TV (${matchingPackages.size})")
+                        StatChip("${matchingPackages.size} Safe Targets")
+                        StatChip("~${estMb} MB Freeable")
+                        if (disabledCount > 0) StatChip("$disabledCount Already Cleaned", highlight = true)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    SignalButton(
+                        onClick = onStartDebloat,
+                        enabled = device != null && matchingPackages.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.CleaningServices, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (matchingPackages.isNotEmpty()) {
+                                "Clean ${matchingPackages.size} Safe Apps Now"
+                            } else {
+                                "All Matched Bloat Already Cleaned"
+                            },
+                        )
+                    }
+
+                    if (onOpenModelDebloat != null && matchedList != null) {
+                        SandOutlinedButton(
+                            onClick = onOpenModelDebloat,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Review Full ${matchedList.list.name} List")
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Button(
-            onClick = onNext,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Text("Proceed to Step 3: Install Custom Launcher")
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-        }
-    }
-}
-
-@Composable
-private fun Step3LauncherView(
-    profile: RecognizedTvProfile,
-    installedApps: List<AppInfo>,
-    onInstallLauncher: (String) -> Unit,
-    onSetDefaultHome: (String) -> Unit,
-    onGrantAccessibility: (String) -> Unit,
-    onPickApk: () -> Unit,
-    onNext: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = "Why Install a Custom Launcher?",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Stock Google TV and Fire TV launchers consume up to 450 MB RAM continuously loading ad carousels and video previews. Replacing them with an ultra-lightweight launcher gives your TV an instantaneous, ad-free Apple TV experience.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        Text(
-            text = "Curated Directly-Installable Launchers",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        TvLauncherInfo.CURATED_LAUNCHERS.forEach { launcher ->
-            val isInstalled = installedApps.any { it.packageName == launcher.packageName }
-            val isActive = installedApps.firstOrNull { it.packageName == launcher.packageName }?.home == true
-
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                    else MaterialTheme.colorScheme.surfaceContainerHigh
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = launcher.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                if (launcher.isCleanYourTvOfficial) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(MaterialTheme.colorScheme.primary)
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "Official CleanYourTV",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.Bold
-                                        )
+        val activeRestore = restorePoints.filter { it.active }
+        if (activeRestore.isNotEmpty() || disabledCount > 0) {
+            StaggeredCardEntrance(delayMillis = 35) {
+                SandCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Safety & 1-Tap Undo",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = CleanBotPalette.OliveDrab,
+                        )
+                        activeRestore.take(3).forEach { pt ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = CleanBotPalette.DesertSandHighest,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(pt.presetName, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                        Text("${pt.disabledPackages.size} apps • ${pt.tvBrand}", style = MaterialTheme.typography.labelSmall, color = CleanBotPalette.SandMutedInk)
+                                    }
+                                    TextButton(onClick = { onUndoRestorePoint(pt) }) {
+                                        Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(16.dp), tint = CleanBotPalette.OliveDrab)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Undo", color = CleanBotPalette.OliveDrab, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
+                        }
+                        if (disabledCount > 0) {
+                            SandOutlinedButton(onClick = onRestoreAll, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.RestartAlt, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Restore All $disabledCount Disabled Apps")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        OliveButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
+            Text("Next: CleanYourTV Launcher v$CLEAN_YOUR_TV_VERSION")
+            Spacer(modifier = Modifier.width(6.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        }
+    }
+}
+
+@Composable
+private fun StepLauncherView(
+    installedApps: List<AppInfo>,
+    launcherFlow: LauncherFlow?,
+    onInstallBundled: (Boolean) -> Unit,
+    onSetDefaultHome: (String) -> Unit,
+    onGrantAccessibility: (String) -> Unit,
+    onPickApk: () -> Unit,
+    onNext: () -> Unit,
+) {
+    val launcher = TvLauncherInfo.CLEAN_YOUR_TV
+    val existing = installedApps.firstOrNull { it.packageName == launcher.packageName }
+    val isInstalled = existing != null
+    val isActive = existing?.home == true
+    val isInstalling = launcherFlow?.step == LauncherFlow.Step.Installing
+    var autoKeys by rememberSaveable { mutableStateOf(true) }
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        StaggeredCardEntrance(delayMillis = 0) {
+            SandCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = launcher.tagline,
+                                text = launcher.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = "Version ${launcher.versionName} • Offline bundled APK",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = CleanBotPalette.SandMutedInk,
                             )
                         }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (isActive) MaterialTheme.colorScheme.primary
-                                    else if (isInstalled) MaterialTheme.colorScheme.secondaryContainer
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = when {
+                                isActive -> CleanBotPalette.SignalYellow
+                                isInstalled -> CleanBotPalette.OliveDrab
+                                else -> CleanBotPalette.DesertSandHighest
+                            },
                         ) {
                             Text(
-                                text = if (isActive) "Active Home" else if (isInstalled) "Installed" else "Not Installed",
+                                text = when {
+                                    isActive -> "Active Home"
+                                    isInstalled -> "Installed"
+                                    else -> "Ready to Install"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = when {
+                                    isActive -> CleanBotPalette.OnSignalYellow
+                                    isInstalled -> CleanBotPalette.OnOliveDrab
+                                    else -> CleanBotPalette.SandInk
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = launcher.description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = CleanBotPalette.SandMutedInk,
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { autoKeys = !autoKeys }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (!isInstalled) {
-                            Button(
-                                onClick = { onInstallLauncher(launcher.packageName) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Install on TV")
-                            }
-                        } else {
+                        Checkbox(
+                            checked = autoKeys,
+                            onCheckedChange = { autoKeys = it },
+                            colors = CheckboxDefaults.colors(checkedColor = CleanBotPalette.OliveDrab),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column {
+                            Text(
+                                text = "Auto-enable Home & Input Key Services",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = "Ensures your TV remote Home button opens CleanYourTV cleanly",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CleanBotPalette.SandMutedInk,
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(visible = isInstalling) {
+                        val frac = launcherFlow?.bundled?.progress?.let { p ->
+                            p.total?.takeIf { it > 0L }?.let { (p.done.toFloat() / it.toFloat()).coerceIn(0f, 1f) }
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = when (launcherFlow?.bundled?.phase) {
+                                    CleanYourTvInstallState.Phase.Preparing -> "Verifying tvhome.apk checksum…"
+                                    CleanYourTvInstallState.Phase.Installing -> "Installing CleanYourTV onto TV…"
+                                    CleanYourTvInstallState.Phase.Configuring -> "Running ART compile & key setup…"
+                                    else -> "Installing…"
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = CleanBotPalette.OliveDrab,
+                            )
+                            SignalProgressBar(progress = frac ?: 0.5f)
+                        }
+                    }
+
+                    val err = launcherFlow?.bundled?.error
+                    if (err != null) {
+                        Text(
+                            text = "Install notice: Check TV connection or sideload manually below.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+
+                    if (!isInstalled) {
+                        SignalButton(
+                            onClick = { onInstallBundled(autoKeys) },
+                            enabled = !isInstalling,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isInstalling) "Installing…" else "1-Tap Install CleanYourTV v${launcher.versionName}")
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             if (!isActive) {
-                                Button(
+                                SignalButton(
                                     onClick = { onSetDefaultHome(launcher.packageName) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
                                 ) {
                                     Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Make Default Home")
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Set as Home")
                                 }
                             }
-                            if (launcher.supportsAccessibilityRemap && launcher.accessibilityServiceComponent != null) {
-                                FilledTonalButton(
-                                    onClick = { onGrantAccessibility(launcher.accessibilityServiceComponent) },
-                                    modifier = Modifier.weight(1f)
+                            launcher.accessibilityServiceComponent.let { svc ->
+                                SandOutlinedButton(
+                                    onClick = { onGrantAccessibility(svc) },
+                                    modifier = Modifier.weight(1f),
                                 ) {
                                     Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Remap Home Key")
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Fix Remote Keys")
                                 }
                             }
                         }
@@ -720,151 +715,148 @@ private fun Step3LauncherView(
             }
         }
 
-        // Sideload APK Option
-        OutlinedButton(
-            onClick = onPickApk,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        SandOutlinedButton(onClick = onPickApk, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Sideload Launcher APK from Phone Storage")
+            Text("Install Custom tvhome.apk from Phone")
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Button(
-            onClick = onNext,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("Proceed to Step 4: Choose Custom Theme")
-            Spacer(modifier = Modifier.width(8.dp))
+        OliveButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
+            Text("Next: Apply Desert & Olive TV Look")
+            Spacer(modifier = Modifier.width(6.dp))
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
 
 @Composable
-private fun Step4ThemeView(
-    profile: RecognizedTvProfile,
+private fun StepThemeView(
+    isLauncherInstalled: Boolean,
     selectedTheme: TvTheme,
     onThemeSelected: (TvTheme) -> Unit,
     onApplyTheme: () -> Unit,
-    onResetTheme: () -> Unit
+    onResetTheme: () -> Unit,
 ) {
+    val scrollState = rememberScrollState()
+    val themeRowScroll = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // TV Mockup Preview
-        TvMockupPreview(
-            theme = selectedTheme,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-        )
+        StaggeredCardEntrance(delayMillis = 0) {
+            TvMockupPreview(
+                theme = selectedTheme,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
-        // Theme Grid Selector
         Text(
-            text = "Curated CleanYourTV Visual Themes",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
+            text = "CleanYourTV Preset Looks",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = CleanBotPalette.OliveDrab,
         )
-
-        val activePrimaryColor = MaterialTheme.colorScheme.primary
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .horizontalScroll(themeRowScroll),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             TvTheme.CURATED_THEMES.forEach { theme ->
-                val isSelected = selectedTheme.id == theme.id
-                val borderMod = if (isSelected) {
-                    Modifier.border(2.dp, activePrimaryColor, RoundedCornerShape(12.dp))
-                } else {
-                    Modifier
-                }
-
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+                val selected = theme.id == selectedTheme.id
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (selected) CleanBotPalette.SignalYellow.copy(alpha = 0.25f) else CleanBotPalette.DesertSandBright,
+                    border = BorderStroke(
+                        width = if (selected) 2.dp else 1.dp,
+                        color = if (selected) CleanBotPalette.OliveDrab else CleanBotPalette.SandOutline,
                     ),
                     modifier = Modifier
-                        .width(130.dp)
-                        .clickable { onThemeSelected(theme) }
-                        .then(borderMod)
+                        .width(136.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onThemeSelected(theme) },
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(40.dp)
+                                .height(36.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(theme.primaryAccent)
+                                .border(1.dp, theme.backgroundColor.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = theme.name,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = theme.subtitle,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(theme.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(theme.subtitle, style = MaterialTheme.typography.labelSmall, color = CleanBotPalette.SandMutedInk, maxLines = 1)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Action Buttons
-        Button(
+        SignalButton(
             onClick = onApplyTheme,
+            enabled = isLauncherInstalled,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Apply Theme '${selectedTheme.name}' to TV")
+            Text(
+                if (isLauncherInstalled) "Push '${selectedTheme.name}' to TV"
+                else "Install CleanYourTV in Step 2 First",
+            )
         }
 
-        OutlinedButton(
+        SandOutlinedButton(
             onClick = onResetTheme,
-            modifier = Modifier.fillMaxWidth()
+            enabled = isLauncherInstalled,
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Reset TV to Default Theme")
+            Text("Reset CleanYourTV Theme")
         }
     }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+private fun StatChip(label: String, highlight: Boolean = false) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (highlight) CleanBotPalette.SignalYellow else CleanBotPalette.DesertSandHighest,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (highlight) CleanBotPalette.OnSignalYellow else CleanBotPalette.OliveDrab,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium
+    }
+}
+
+@FormFactorPreviews
+@Composable
+private fun CleanTvWorkflowScreenPreview() {
+    CleanBotTheme {
+        CleanTvWorkflowScreen(
+            device = null,
+            installedApps = emptyList(),
+            restorePoints = emptyList(),
+            onRescanOrSwitch = {},
+            onBatchDebloat = { _, _, _, _ -> },
+            onUndoRestorePoint = {},
+            onRestoreAllDebloated = {},
+            onInstallCleanYourTv = {},
+            onSetDefaultHome = {},
+            onGrantAccessibility = {},
+            onPickLauncherApk = {},
+            onApplyTheme = {},
+            onResetTheme = {},
         )
     }
 }

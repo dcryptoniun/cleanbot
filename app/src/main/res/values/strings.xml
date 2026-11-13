@@ -53,8 +53,8 @@
     <string name="copy_keeps_home">Keeps Home with its accessibility service</string>
     <string name="copy_make_home">Make Home</string>
     <string name="copy_get_launcher">Get another launcher</string>
-    <string name="copy_get_launcher_text">Install one from the Play Store, like Projectivy or FLauncher. Switch back any time.</string>
-    <string name="copy_get_projectivy_text">Install Projectivy. Switch back any time.</string>
+    <string name="copy_get_launcher_text">Install CleanYourTV Launcher (bundled v3.4). Switch back any time.</string>
+    <string name="copy_get_projectivy_text">Install CleanYourTV Launcher (bundled v3.4). Switch back any time.</string>
     <string name="copy_home_settings">Home screen settings</string>
     <string name="copy_make_home_title">Make %1$s the home screen?</string>
 
@@ -141,14 +141,14 @@
     <string name="copy_not_installed_text">The Play Store closed on the TV before it was installed. If the Store said it isn\'t available for this TV, choose another launcher.</string>
 
     <!-- Installing Projectivy on Fire OS: downloaded from its developer's GitHub, installed over adb -->
-    <string name="copy_install_projectivy">Install Projectivy</string>
+    <string name="copy_install_projectivy">Install CleanYourTV Launcher</string>
     <string name="copy_fire_install_text">A home screen without ads. cLeanBot installs it on the TV for you; there\'s nothing to do on the TV.</string>
     <!-- %1$s the app's name -->
     <string name="copy_downloads_from">cLeanBot downloads %1$s from the developer\'s own release page:</string>
     <!-- %1$s the version, %2$s its size (copy_size_*) -->
     <string name="copy_release">Release %1$s · %2$s</string>
     <string name="copy_where_from">Where it comes from</string>
-    <string name="copy_signed_check">cLeanBot checks it\'s signed by Projectivy\'s developer before installing it on the TV. cLeanBot isn\'t affiliated with Projectivy.</string>
+    <string name="copy_signed_check">cLeanBot verifies the bundled CleanYourTV Launcher APK against its SHA-256 checksum before installing it on the TV.</string>
     <string name="copy_download_and_install">Download and install</string>
     <!-- Download directly, on a TV with the Play Store; %1$s the app's name -->
     <string name="copy_download_directly_title">Download %1$s directly?</string>
@@ -162,11 +162,11 @@
     <!-- %1$d percent done, %2$s and %3$s sizes (copy_size_*) -->
     <string name="copy_downloading">Downloading · %1$d%% · %2$s of %3$s</string>
     <string name="copy_step_picked">Picked a file</string>
-    <string name="copy_step_check">Check it\'s Projectivy</string>
-    <string name="copy_step_checking">Checking it\'s Projectivy…</string>
-    <string name="copy_step_checked">It\'s Projectivy</string>
-    <string name="copy_step_checked_text">Signed by its developer</string>
-    <string name="copy_step_failed">Not Projectivy</string>
+    <string name="copy_step_check">Verify CleanYourTV APK</string>
+    <string name="copy_step_checking">Verifying CleanYourTV APK…</string>
+    <string name="copy_step_checked">CleanYourTV verified</string>
+    <string name="copy_step_checked_text">Bundled APK verified</string>
+    <string name="copy_step_failed">Not CleanYourTV</string>
     <string name="copy_step_failed_text">Package name or signature didn\'t match</string>
     <string name="copy_install_on">Install on %1$s</string>
     <string name="copy_stop_title">Stop the download?</string>
@@ -175,13 +175,13 @@
     <string name="copy_keep_downloading">Keep downloading</string>
     <!-- %1$s the TV's name -->
     <string name="copy_installing_on">Installing on %1$s…</string>
-    <string name="copy_not_projectivy">That download isn\'t Projectivy</string>
-    <string name="copy_not_projectivy_text">The file from GitHub didn\'t match Projectivy\'s package name or its developer\'s signature, so cLeanBot installed nothing on the TV.</string>
-    <string name="copy_not_projectivy_file">That file isn\'t Projectivy</string>
-    <string name="copy_not_projectivy_file_text">It didn\'t match Projectivy\'s package name or its developer\'s signature, so cLeanBot installed nothing on the TV.</string>
+    <string name="copy_not_projectivy">Invalid CleanYourTV APK</string>
+    <string name="copy_not_projectivy_text">The APK failed package or SHA-256 verification for CleanYourTV Launcher (com.gathin.tvhome), so cLeanBot installed nothing on the TV.</string>
+    <string name="copy_not_projectivy_file">That file isn\'t CleanYourTV Launcher</string>
+    <string name="copy_not_projectivy_file_text">It didn\'t match CleanYourTV Launcher\'s package name (com.gathin.tvhome) or signing certificate, so cLeanBot installed nothing on the TV.</string>
     <string name="copy_cant_read_file">cLeanBot couldn\'t read that file. Pick it again, or download it again.</string>
     <string name="copy_cant_install">Couldn\'t install %1$s</string>
-    <string name="copy_no_download">Couldn\'t download Projectivy</string>
+    <string name="copy_no_download">Couldn\'t prepare CleanYourTV APK</string>
     <string name="copy_no_download_offline">The phone can\'t reach GitHub. Check its internet, then try again.</string>
     <!-- %1$s a clock time, like 18:44 -->
     <string name="copy_no_download_limited_until">GitHub is limiting downloads from your network until %1$s. Try again then, or download it yourself.</string>
@@ -189,8 +189,8 @@
     <string name="copy_or_yourself">Or download it yourself</string>
     <string name="copy_yourself_page">Download the app file (.apk) from the release page in your browser.</string>
     <!-- %1$s the release's file name, like Projectivy.apk -->
-    <string name="copy_yourself_pick_file">Come back and pick %1$s. cLeanBot checks it\'s Projectivy before installing it.</string>
-    <string name="copy_yourself_pick">Come back and pick it. cLeanBot checks it\'s Projectivy before installing it.</string>
+    <string name="copy_yourself_pick_file">Come back and pick %1$s. cLeanBot verifies it\'s CleanYourTV Launcher before installing.</string>
+    <string name="copy_yourself_pick">Come back and pick it. cLeanBot verifies it\'s CleanYourTV Launcher before installing.</string>
     <string name="copy_latest_release">Latest release</string>
     <string name="copy_pick_downloaded">Pick the downloaded file</string>
     <string name="copy_pick_another">Pick another file</string>
@@ -931,7 +931,7 @@
     <!-- %1$s is the first 12 characters of a git commit -->
     <string name="lists_about_lists_commit">Themes studio, presets &amp; debloat lists inspired by CleanYourTV by Gathin (MIT licence), commit %1$s.</string>
     <string name="lists_about_lists_pending">Themes studio, presets &amp; debloat lists inspired by CleanYourTV by Gathin (MIT licence).</string>
-    <string name="lists_about_libraries">Inspired by CleanYourTV, Projectivy &amp; FLauncher. Uses Kadb (Apache 2.0) &amp; spake2-java (GPL v3). Full licence texts are in NOTICE.</string>
+    <string name="lists_about_libraries">Powered by CleanYourTV (Gathin23/cleanyourtv). Uses Kadb (Apache 2.0) &amp; spake2-java (GPL v3). Full licence texts are in NOTICE.</string>
     <string name="lists_about_close">Close</string>
 
     <!-- AdvancedScreen.kt: Advanced monitor -->

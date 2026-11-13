@@ -164,6 +164,11 @@ import androidx.compose.ui.text.withStyle
 import com.gerstudio.cleanbot.data.Device
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.layout.WindowInsetsRulers
+import androidx.compose.foundation.layout.fitInside
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.gerstudio.cleanbot.ui.theme.CleanBotPalette
+import com.gerstudio.cleanbot.ui.theme.LocalHapticsEnabled
 import com.gerstudio.cleanbot.R
 import com.gerstudio.cleanbot.data.UiText
 import com.gerstudio.cleanbot.data.resolve
@@ -234,6 +239,7 @@ fun RemoteScreen(
     state: UiState,
     actions: RemoteActions,
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    embedded: Boolean = false,
 ) {
     val device = state.selected ?: return
     val restart = state.restarting[device.id]
@@ -270,16 +276,16 @@ fun RemoteScreen(
     val scope = rememberCoroutineScope()
     if (editing) ButtonsSheet(state.device.dock, state.device.apps, cap, actions.setDock, onDismiss = { editing = false })
 
-    ModalBottomSheet(
-        onDismissRequest = actions.back,
-        sheetState = @Suppress("DEPRECATION") rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
+    val sheetContent: @Composable () -> Unit = {
         // The sheet is its own window, so the text box's focus lives here, not in the screen's.
         val focus = LocalFocusManager.current
         // A tap on empty space puts the keyboard away once the finger lifts. Keys and buttons consume
         // their lift, so the D-pad can move through results with the keyboard still up. Never consumed here.
         Box(
             Modifier.fillMaxSize()
+                .background(CleanBotPalette.DesertSand)
+                .then(if (embedded) Modifier.statusBarsPadding() else Modifier)
+                .fitInside(WindowInsetsRulers.Ime.current)
                 .onGloballyPositioned { origin = it.positionInWindow() }
                 .pointerInput(typing) {
                     if (!typing) return@pointerInput
@@ -292,7 +298,7 @@ fun RemoteScreen(
                 },
         ) {
             Column(
-                Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = if (embedded) 12.dp else 0.dp, bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 RemoteHeader(state, device, restart, screenOff, onRestartTap = { hidden = null }) {
@@ -313,7 +319,7 @@ fun RemoteScreen(
                         label = { Text("Trackpad") }
                     )
                 }
-                CompositionLocalProvider(LocalKeyHaptics provides state.keyHaptics) { Column(
+                CompositionLocalProvider(LocalKeyHaptics provides (state.keyHaptics && LocalHapticsEnabled.current)) { Column(
                     Modifier.weight(1f).alpha(if (live) 1f else 0.38f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -398,6 +404,17 @@ fun RemoteScreen(
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
         }
     }
+    if (embedded) {
+        sheetContent()
+    } else {
+        ModalBottomSheet(
+            onDismissRequest = actions.back,
+            containerColor = CleanBotPalette.DesertSand,
+            sheetState = @Suppress("DEPRECATION") rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            sheetContent()
+        }
+    }
 }
 
 /**
@@ -466,7 +483,7 @@ private fun DPad(enabled: Boolean, press: suspend (RemoteKey) -> Boolean, size: 
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, glyph, tint = tint)
             }
             KeySurface(
-                RemoteKey.OK, stringResource(R.string.remote_ok), enabled, press, CircleShape, MaterialTheme.colorScheme.primary,
+                RemoteKey.OK, stringResource(R.string.remote_ok), enabled, press, CircleShape, CleanBotPalette.SignalYellow,
                 Modifier.size(112.dp * scale).align(Alignment.Center),
             ) {}
         }

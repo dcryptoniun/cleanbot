@@ -97,8 +97,7 @@ fun TvMockupPreview(
                     val timeStr = when (theme.clockStyle) {
                         TvClockStyle.TWELVE_HOUR -> "08:45 PM"
                         TvClockStyle.TWENTY_FOUR_HOUR -> "20:45"
-                        TvClockStyle.MINIMAL_COMPACT -> "20:45"
-                        TvClockStyle.SPLIT_FLAP -> "20 45"
+                        TvClockStyle.SYSTEM_DEFAULT -> "20:45"
                     }
                     Text(
                         text = timeStr,

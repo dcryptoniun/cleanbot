@@ -1,23 +1,24 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.1"
 kotlin = "2.4.21"
 compose-bom = "2026.09.00"
 # Expressive APIs (MaterialExpressiveTheme, MotionScheme) are internal in the BOM's 1.4.0; public from 1.5.0.
-material3 = "1.5.0-beta02"
-adaptive = "1.0.0"
-adaptive-nav-suite = "1.3.1"
-datastore = "1.1.3"
-serialization = "1.7.3"
+material3 = "1.5.0-rc01"
+adaptive = "1.3.0"
+adaptive-nav-suite = "1.5.0-rc01"
+nav3 = "1.2.1"
+datastore = "1.3.0"
+serialization = "1.13.0"
 activity-compose = "1.13.0"
 core-ktx = "1.19.1"
 core-splashscreen = "1.2.0"
 lifecycle = "2.11.0"
 coroutines = "1.11.0"
-conscrypt = "2.8.0"
-okio = "3.9.1"
-bouncycastle = "1.78.1"
+conscrypt = "2.9.0"
+okio = "3.18.2"
+bouncycastle = "1.87"
 spake2 = "1.1.1"
-roborazzi = "1.77.0"
+roborazzi = "1.78.0"
 robolectric = "4.17"
 junit = "4.13.2"
 play-billing = "9.1.0"
@@ -30,7 +31,10 @@ androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", versi
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "nav3" }
+androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "nav3" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
@@ -41,8 +45,10 @@ compose-icons-extended = { module = "androidx.compose.material:material-icons-ex
 compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "adaptive" }
 compose-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "adaptive" }
 compose-material3-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptive" }
+compose-material3-adaptive-navigation3 = { module = "androidx.compose.material3.adaptive:adaptive-navigation3", version.ref = "adaptive" }
 compose-material3-adaptive-navigation-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite", version.ref = "adaptive-nav-suite" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }

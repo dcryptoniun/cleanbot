@@ -18,81 +18,92 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gerstudio.cleanbot.ui.theme.CleanBotPalette
+import com.gerstudio.cleanbot.ui.theme.rememberCleanBotHaptics
 
 @Composable
 fun MacroChips(
-    onGrantProjectivy: () -> Unit,
+    onEnableCleanYourTvKeys: () -> Unit,
     onToggleFps: () -> Unit,
     onSetDpi: () -> Unit,
     onTrimCaches: () -> Unit,
-    modifier: Modifier = Modifier
+    fpsEnabled: Boolean = false,
+    currentDpi: Int? = null,
+    modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberCleanBotHaptics()
+    val scrollState = rememberScrollState()
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         AssistChip(
-            onClick = onGrantProjectivy,
-            label = { Text("Grant Projectivy", fontSize = 12.sp) },
+            onClick = { haptics.tap(); onEnableCleanYourTvKeys() },
+            label = { Text("CleanYourTV Keys", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
             leadingIcon = {
-                Icon(
-                    Icons.Default.Key,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(16.dp))
             },
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                labelColor = CleanBotPalette.OliveDrab,
+                leadingIconContentColor = CleanBotPalette.OliveDrab,
+            ),
         )
 
         AssistChip(
-            onClick = onTrimCaches,
-            label = { Text("Trim All Caches", fontSize = 12.sp) },
+            onClick = { haptics.tap(); onTrimCaches() },
+            label = { Text("Trim All Caches", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
             leadingIcon = {
-                Icon(
-                    Icons.Default.CleaningServices,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(Icons.Default.CleaningServices, contentDescription = null, modifier = Modifier.size(16.dp))
             },
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                labelColor = CleanBotPalette.OliveDrab,
+                leadingIconContentColor = CleanBotPalette.OliveDrab,
+            ),
         )
 
         AssistChip(
-            onClick = onToggleFps,
-            label = { Text("Toggle 120Hz / FPS", fontSize = 12.sp) },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Speed,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+            onClick = { haptics.toggle(fpsEnabled); onToggleFps() },
+            label = {
+                Text(
+                    if (fpsEnabled) "FPS Overlay: ON" else "FPS Overlay",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
                 )
             },
+            leadingIcon = {
+                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
+                containerColor = if (fpsEnabled) CleanBotPalette.SignalYellow else MaterialTheme.colorScheme.surfaceContainer,
+                labelColor = if (fpsEnabled) CleanBotPalette.OnSignalYellow else CleanBotPalette.OliveDrab,
+                leadingIconContentColor = if (fpsEnabled) CleanBotPalette.OnSignalYellow else CleanBotPalette.OliveDrab,
+            ),
         )
 
         AssistChip(
-            onClick = onSetDpi,
-            label = { Text("TV DPI Scale", fontSize = 12.sp) },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Tv,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+            onClick = { haptics.tap(); onSetDpi() },
+            label = {
+                Text(
+                    currentDpi?.let { "DPI: ${it}dp" } ?: "Display DPI",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
                 )
             },
+            leadingIcon = {
+                Icon(Icons.Default.Tv, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
+                containerColor = if (currentDpi != null) CleanBotPalette.OliveDrab else MaterialTheme.colorScheme.surfaceContainer,
+                labelColor = if (currentDpi != null) CleanBotPalette.OnOliveDrab else CleanBotPalette.OliveDrab,
+                leadingIconContentColor = if (currentDpi != null) CleanBotPalette.OnOliveDrab else CleanBotPalette.OliveDrab,
+            ),
         )
     }
 }

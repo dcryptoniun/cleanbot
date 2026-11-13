@@ -824,7 +824,7 @@ class ScreenshotTest {
             "Disney+" to "com.disney.disneyplus", "XGIMI Manual" to "com.xgimi.manual", "Screensaver" to "com.google.android.backdrop",
         ).map { (label, pkg) -> ResetApp(pkg, label) },
         bringBack = listOf(ResetApp("com.google.android.katniss", "Google app for Android TV"), ResetApp("com.xgimi.store", "XGIMI Store"), ResetApp("com.google.android.tvrecommendations", "TV Recommendations")),
-        home = ResetHome("com.spocky.projengmenu", "Projectivy Launcher", "com.google.android.apps.tv.launcherx", "Google TV Home", service = true),
+        home = ResetHome("com.gathin.tvhome", "CleanYourTV Launcher", "com.google.android.apps.tv.launcherx", "Google TV Home", service = true),
         shippedOff = 4,
         ownHome = "Google TV Home",
     )
@@ -1056,7 +1056,7 @@ class ScreenshotTest {
             drawLine(36f, 56f, 60f, 56f, line)
         }
         mapOf(
-            "com.spocky.projengmenu" to icon(0xFF3D5AFE) { squares() },
+            "com.gathin.tvhome" to icon(0xFF3D5AFE) { squares() },
             "com.google.android.youtube.tv" to icon(0xFFC4302B) { screen() },
             "com.netflix.ninja" to icon(0xFF141414) { film() },
             "org.jellyfin.androidtv" to icon(0xFF7B5EA7) { stack() },
@@ -1287,13 +1287,13 @@ class ScreenshotTest {
      * a real square icon and an app with no icon at all, in the Apps list.
      */
     private fun tilesState(): UiState {
-        val projectivy = "com.spocky.projengmenu"
+        val cleanYourTv = "com.gathin.tvhome"
         val spotify = AppInfo("com.spotify.tv.android", "Spotify", 0xFF121212, false, true, null, "", removable = true, launchable = true, iconAccent = 0xFF1ED760)
         val mine = AppInfo("com.example.myapp", "My App", null, false, true, null, "1.0", removable = true, launchable = true)
         val s = md3State()
         val apps = s.device.apps.map { a ->
             when (a.packageName) {
-                projectivy -> a.copy(iconColor = 0xFF1C120D, iconAccent = 0xFFFF6A13)
+                cleanYourTv -> a.copy(iconColor = 0xFF1C120D, iconAccent = 0xFFFF6A13)
                 "com.google.android.youtube.tv" -> a.copy(icon = realIcon(a.packageName))
                 else -> a
             }
@@ -1653,7 +1653,7 @@ class ScreenshotTest {
         val files = listOf(
             TvFile("subtitles.srt", 61_000, now - 40 * 60_000L),
             TvFile("kodi-21.1-armeabi-v7a.apk", 74_000_000, now - 5 * 3_600_000L),
-            TvFile("projectivy-backup.plbackup", 48_200, now - 26 * 3_600_000L),
+            TvFile("cleanyourtv-backup.json", 48_200, now - 26 * 3_600_000L),
             TvFile("holiday-2025.mp4", 812_000_000, now - 3 * 86_400_000L),
             TvFile("wallpaper-mountains.jpg", 2_400_000, now - 9 * 86_400_000L),
         )
@@ -1675,22 +1675,22 @@ class ScreenshotTest {
     private val playStore = AppInfo("com.android.vending", "Google Play Store", 0xFF01875F, true, true, null, "40.1")
     private val flauncher = AppInfo("me.efesser.flauncher", "FLauncher", 0xFF3F6FD8, false, true, null, "0.18", removable = true, answersHome = true)
 
-    /** Projectivy, installed by the user, as a launcher: [home] it's on Home, the stock launcher off; else it offers to replace it. */
-    private fun projectivy(a: AppInfo, home: Boolean) = a.copy(
+    /** CleanYourTV Launcher, installed by the user, as a launcher: [home] it's on Home, the stock launcher off; else it offers to replace it. */
+    private fun cleanYourTvApp(a: AppInfo, home: Boolean) = a.copy(
         protectedReason = UiText(R.string.data_protected_home_screen).takeIf { home }, system = false, removable = true, answersHome = true, homeService = true,
         home = home, homeInstead = stockHome.packageName.takeUnless { home }, homeBack = stockHome.label.takeIf { home },
     )
 
     private fun homeState(home: Boolean, pending: Pair<String, Action>? = null) = deviceState {
         val stock = if (home) stockHome.copy(enabled = false, home = false, answersHome = false, protectedReason = null) else stockHome
-        val f = flauncher.copy(homeInstead = if (home) "com.spocky.projengmenu" else stock.packageName)
-        copy(apps = listOf(stock, f) + apps.map { if (it.packageName == "com.spocky.projengmenu") projectivy(it, home) else it }, pending = pending)
+        val f = flauncher.copy(homeInstead = if (home) "com.gathin.tvhome" else stock.packageName)
+        copy(apps = listOf(stock, f) + apps.map { if (it.packageName == "com.gathin.tvhome") cleanYourTvApp(it, home) else it }, pending = pending)
     }
 
-    // Make Home on Projectivy: the confirm says the TV's own launcher is the only one turned off.
+    // Make Home on CleanYourTV: the confirm says the TV's own launcher is the only one turned off.
     @Test fun readme_home() {
-        shot("30_readme_home", screen = true) { DeviceTabsScreen(homeState(home = false, pending = "com.spocky.projengmenu" to Action.Home), DeviceActions(), startTab = TvTab.Tweaks) }
-        compose.onNodeWithText(Copy.makeHomeTitle("Projectivy Launcher").text()).assertExists()
+        shot("30_readme_home", screen = true) { DeviceTabsScreen(homeState(home = false, pending = "com.gathin.tvhome" to Action.Home), DeviceActions(), startTab = TvTab.Tweaks) }
+        compose.onNodeWithText(Copy.makeHomeTitle("CleanYourTV Launcher").text()).assertExists()
     }
 
     private fun homeCard(dark: Boolean) {
@@ -1707,12 +1707,12 @@ class ScreenshotTest {
         compose.onNodeWithText(Copy.NO_DEFAULT.text()).assertExists()
     }
 
-    // Back to Google TV Home from Projectivy: turned back on, and Projectivy's service goes off with Home.
+    // Back to Google TV Home from CleanYourTV: turned back on, and CleanYourTV's service goes off with Home.
     private fun homeBack(dark: Boolean) {
         shot("78_tweaks_home_back", dark, screen = true) {
             DeviceTabsScreen(homeState(home = true, pending = stockHome.packageName to Action.HomeBack), DeviceActions(), startTab = TvTab.Tweaks)
         }
-        compose.onNodeWithText(Copy.explainLeave("Google TV Home", off = true, "Projectivy Launcher", currentService = true, service = false).text()).assertExists()
+        compose.onNodeWithText(Copy.explainLeave("Google TV Home", off = true, "CleanYourTV Launcher", currentService = true, service = false).text()).assertExists()
     }
     @Test fun tweaks_homeBack() = homeBack(false)
     @Test fun tweaks_homeBack_dark() = homeBack(true)
@@ -1722,14 +1722,14 @@ class ScreenshotTest {
         compose.mainClock.autoAdvance = false
         compose.setContent { CleanBotTheme(dynamic = false) { DeviceTabsScreen(homeState(home = true), DeviceActions(), startTab = TvTab.Apps) } }
         compose.mainClock.advanceTimeBy(1_000)
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Projectivy Launcher"))
-        compose.onNodeWithText("Projectivy Launcher").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("CleanYourTV Launcher"))
+        compose.onNodeWithText("CleanYourTV Launcher").performClick()
         compose.mainClock.advanceTimeBy(1_000)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(Copy.HOME_SETTINGS.text()))
         compose.onNodeWithText(Copy.HOME_SETTINGS.text()).performClick()
         compose.mainClock.advanceTimeBy(1_000)
         // The Tweaks tab, on the card.
-        compose.onNodeWithText(Copy.opensOnHome("Projectivy Launcher").text()).assertExists()
+        compose.onNodeWithText(Copy.opensOnHome("CleanYourTV Launcher").text()).assertExists()
     }
 
     // A keep from the TV's list only warns; a hard lock still offers nothing.

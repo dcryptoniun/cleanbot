@@ -4,38 +4,35 @@ package com.gerstudio.cleanbot
 
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
-import com.gerstudio.cleanbot.R
+import com.gerstudio.cleanbot.adb.AdbSession
 import com.gerstudio.cleanbot.adb.ApkInfo
 import com.gerstudio.cleanbot.adb.InstallResult
 import com.gerstudio.cleanbot.adb.Progress
 import com.gerstudio.cleanbot.data.AppInfo
+import com.gerstudio.cleanbot.data.CLEAN_YOUR_TV
+import com.gerstudio.cleanbot.data.CLEAN_YOUR_TV_VERSION
+import com.gerstudio.cleanbot.data.CleanYourTvInstallReport
+import com.gerstudio.cleanbot.data.CleanYourTvInstaller
 import com.gerstudio.cleanbot.data.Device
 import com.gerstudio.cleanbot.data.DeviceSource
 import com.gerstudio.cleanbot.data.DeviceState
 import com.gerstudio.cleanbot.data.FIRE_TV_LAUNCHER
 import com.gerstudio.cleanbot.data.FakeDeviceSource
 import com.gerstudio.cleanbot.data.HistoryEntry
-import com.gerstudio.cleanbot.data.LauncherDownload
-import com.gerstudio.cleanbot.data.LauncherRelease
-import com.gerstudio.cleanbot.data.NotProjectivy
-import com.gerstudio.cleanbot.data.PROJECTIVY
-import com.gerstudio.cleanbot.data.PROJECTIVY_SIGNERS
+import com.gerstudio.cleanbot.data.NotCleanYourTv
 import com.gerstudio.cleanbot.data.PickedApp
 import com.gerstudio.cleanbot.data.ScanHit
 import com.gerstudio.cleanbot.data.ScanKind
 import com.gerstudio.cleanbot.data.Snapshot
 import com.gerstudio.cleanbot.data.Suggestions
 import com.gerstudio.cleanbot.data.UiText
+import com.gerstudio.cleanbot.data.UnsupportedTvSdkException
 import com.gerstudio.cleanbot.data.isFireOs
-import com.gerstudio.cleanbot.data.isProjectivy
-import com.gerstudio.cleanbot.data.latestTag
-import com.gerstudio.cleanbot.data.pageApk
-import com.gerstudio.cleanbot.data.parseRelease
-import com.gerstudio.cleanbot.ui.FireInstall
+import com.gerstudio.cleanbot.ui.CleanBotViewModel
+import com.gerstudio.cleanbot.ui.CleanYourTvInstallState
 import com.gerstudio.cleanbot.ui.LauncherFlow
 import com.gerstudio.cleanbot.ui.PLAY_STORE
 import com.gerstudio.cleanbot.ui.RECOMMENDED
-import com.gerstudio.cleanbot.ui.CleanBotViewModel
 import com.gerstudio.cleanbot.ui.fireInstall
 import com.gerstudio.cleanbot.ui.offerChoose
 import com.gerstudio.cleanbot.ui.offerLauncher
@@ -60,11 +57,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import java.io.IOException
 
-// Fixtures from Amazon's developer docs, not from a TV: Fire TV devices report Build.MANUFACTURER "Amazon" and an
-// AFT model (AFTKRT is the Fire TV Stick 4K Max, 2nd gen); Fire OS's home screen is com.amazon.tv.launcher, also on
-// Fire TV Edition sets made by others.
 private fun tv(manufacturer: String?, model: String?) =
     Device("tv", ScanHit("tv", 5555, ScanKind.Classic, null, null), DeviceState.Online, model, manufacturer, "11", 0L)
 
@@ -76,23 +69,8 @@ private val fireHome = AppInfo(FIRE_TV_LAUNCHER, "Fire TV Home", null, true, tru
 private val store = AppInfo(PLAY_STORE, "Google Play Store", null, true, true, null, "1.0")
 private val tvHome = AppInfo("com.google.android.tvlauncher", "Google TV Home", null, true, true, UiText(R.string.data_protected_home_screen), "1.0", home = true)
 
-private const val TAG = "4.72"
-private const val PAGE = "https://github.com/spocky/miproja1/releases/tag/$TAG"
-private const val APK = "https://github.com/spocky/miproja1/releases/download/$TAG/ProjectivyLauncher-4.72-c97-xda-release.apk"
-
-/** GitHub's releases/latest, cut to the fields read. */
-private fun release(
-    tag: String = TAG,
-    page: String = PAGE,
-    assets: List<Pair<String, String>> = listOf("ProjectivyLauncher-4.72-c97-xda-release.apk" to APK),
-    prerelease: Boolean = false,
-    size: Long = 11432750,
-) = """{"tag_name": "$tag", "html_url": "$page", "draft": false, "prerelease": $prerelease, "assets": [${
-    assets.joinToString { (name, url) -> """{"name": "$name", "browser_download_url": "$url", "size": $size}""" }
-}]}"""
-
-/** A Fire TV with no Play Store, which takes whatever cLeanBot installs; or [tv] with [own] on it. */
-private class FireTv(val tv: Device = amazon, val own: List<AppInfo> = listOf(fireHome)) : DeviceSource by FakeDeviceSource(FakeDeviceSource.Scenario.Empty, clock = { 0L }) {
+private class FireTv(val tv: Device = amazon, val own: List<AppInfo> = listOf(fireHome)) :
+    DeviceSource by FakeDeviceSource(FakeDeviceSource.Scenario.Empty, clock = { 0L }) {
     val installs = mutableListOf<ApkInfo>()
     var refuse: InstallResult? = null
 
@@ -101,31 +79,53 @@ private class FireTv(val tv: Device = amazon, val own: List<AppInfo> = listOf(fi
     override suspend fun suggestions(deviceId: String, apps: suspend () -> List<AppInfo>) = Suggestions.Unavailable
     override suspend fun history(deviceId: String) = emptyList<HistoryEntry>()
     override suspend fun apps(deviceId: String) = own +
-        if (installs.isEmpty()) emptyList() else listOf(AppInfo(PROJECTIVY, "Projectivy Launcher", null, false, true, null, "1.0", homeInstead = FIRE_TV_LAUNCHER, homeService = true))
+        if (installs.isEmpty()) emptyList() else listOf(
+            AppInfo(CLEAN_YOUR_TV, "CleanYourTV Launcher", null, false, true, null, CLEAN_YOUR_TV_VERSION, homeInstead = FIRE_TV_LAUNCHER, homeService = true)
+        )
 
-    override suspend fun install(deviceId: String, apks: List<File>, apk: ApkInfo, allowDowngrade: Boolean, onProgress: (Progress) -> Unit): InstallResult {
+    override suspend fun install(
+        deviceId: String,
+        apks: List<File>,
+        apk: ApkInfo,
+        allowDowngrade: Boolean,
+        onProgress: (Progress) -> Unit,
+    ): InstallResult {
         refuse?.let { return it }
         installs += apk
         return InstallResult.Done
     }
 }
 
-private class FakeDownload(var signedByDeveloper: Boolean = true) : LauncherDownload {
-    var fetched = 0
-    var offline = false
-    override suspend fun latest() = if (offline) throw IOException("offline") else parseRelease(release())!!
-    override suspend fun fetch(release: LauncherRelease, onProgress: (Progress) -> Unit): PickedApp {
-        fetched++
-        if (!signedByDeveloper) throw NotProjectivy()
-        return PickedApp(listOf(File("projectivy.apk")), ApkInfo(PROJECTIVY, 97, release.version), "Projectivy Launcher")
+private class FakeCleanYourTvInstaller(
+    var validApk: Boolean = true,
+    var tvSdk: Int = 34,
+) : CleanYourTvInstaller {
+    var postSetupCalls = 0
+
+    override suspend fun prepareBundled(): PickedApp {
+        if (!validApk) throw NotCleanYourTv("bad checksum")
+        return PickedApp(listOf(File("tvhome.apk")), ApkInfo(CLEAN_YOUR_TV, 13L, CLEAN_YOUR_TV_VERSION), "CleanYourTV Launcher")
     }
-    override suspend fun open(uri: Uri): PickedApp {
-        if (!signedByDeveloper) throw NotProjectivy()
-        return PickedApp(listOf(File("projectivy.apk")), ApkInfo(PROJECTIVY, 97, "4.72"), "Projectivy Launcher")
+
+    override suspend fun openPicked(uri: Uri): PickedApp {
+        if (!validApk) throw NotCleanYourTv("wrong apk")
+        return PickedApp(listOf(File("tvhome.apk")), ApkInfo(CLEAN_YOUR_TV, 13L, CLEAN_YOUR_TV_VERSION), "CleanYourTV Launcher")
+    }
+
+    override suspend fun checkTvCompatibility(session: AdbSession?) {
+        if (tvSdk < 26) throw UnsupportedTvSdkException(tvSdk)
+    }
+
+    override suspend fun verifyAndPostSetup(session: AdbSession?, enableKeyServices: Boolean): CleanYourTvInstallReport {
+        postSetupCalls++
+        return CleanYourTvInstallReport(tvSdk, launched = true, locationPermissionGranted = true, aotCompiled = true, keyServicesEnabled = enableKeyServices)
     }
 }
 
-/** Install a home screen on Fire OS: who gets it, the release and signature checks, and the install. */
+/**
+ * Bundled CleanYourTV Launcher v3.4 installation across Fire OS and Android TV: SDK check,
+ * checksum verification, ADB install, post-install optimization, and picked local APK checks.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -133,7 +133,7 @@ class FireOsTest {
     private val dispatcher = StandardTestDispatcher()
     private val test = TestScope(dispatcher)
     private var source = FireTv()
-    private val download = FakeDownload()
+    private val fakeInstaller = FakeCleanYourTvInstaller()
     private var vm: CleanBotViewModel? = null
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
@@ -158,159 +158,73 @@ class FireOsTest {
         assertFalse(fireInstall(androidTv, listOf(store, tvHome)))
     }
 
-    @Test fun fireOsGetsTheCardWithoutAPlayStore() {
+    @Test fun fireOsGetsCleanYourTvWithoutAPlayStore() {
         val fire = fireInstall(amazon, listOf(fireHome))
         assertTrue(offerChoose(listOf(fireHome), fire))
         assertTrue(offerLauncher(listOf(fireHome), hidden = false, fire = fire))
         assertFalse(offerLauncher(listOf(fireHome), hidden = false))
     }
 
-    @Test fun aListWithoutProjectivyLeavesFireOsAsToday() {
-        val without = RECOMMENDED.filter { it.pkg != PROJECTIVY }
-        assertTrue(without.isNotEmpty())
-        val fire = fireInstall(amazon, listOf(fireHome), without)
-        assertFalse(fire)
-        assertFalse(offerChoose(listOf(fireHome), fire))
-        assertFalse(offerLauncher(listOf(fireHome), hidden = false, fire = fire))
-    }
-
-    @Test fun theLatestReleaseFromProjectivysRepo() {
-        assertEquals(LauncherRelease(TAG, PAGE, APK, 11432750), parseRelease(release()))
-    }
-
-    @Test fun releasesThatArentProjectivysOwnAreRefused() {
-        assertNull(parseRelease(release(prerelease = true)))
-        assertNull(parseRelease(release(page = "https://github.com/someone/miproja1/releases/tag/$TAG")))
-        assertNull(parseRelease(release(assets = listOf("a.apk" to APK, "b.apk" to APK))))
-        assertNull(parseRelease(release(assets = listOf("p.apk" to "https://example.com/$TAG/p.apk"))))
-        assertNull(parseRelease(release(assets = listOf("p.apk" to APK.replace("/$TAG/", "/4.70/")))))
-        assertNull(parseRelease(release(size = 0)))
-        assertNull(parseRelease(release(size = 200L shl 20)))
-        assertNull(parseRelease("not json"))
-    }
-
-    @Test fun onlyProjectivySignedByItsDeveloper() {
-        assertTrue(isProjectivy(PROJECTIVY, PROJECTIVY_SIGNERS))
-        assertFalse(isProjectivy(PROJECTIVY, setOf("0".repeat(64))))
-        assertFalse(isProjectivy(PROJECTIVY, PROJECTIVY_SIGNERS + "0".repeat(64)))
-        assertFalse(isProjectivy(PROJECTIVY, emptySet()))
-        assertFalse(isProjectivy("com.example.launcher", PROJECTIVY_SIGNERS))
+    @Test fun recommendedContainsOnlyCleanYourTvLauncher() {
+        assertEquals(listOf(CLEAN_YOUR_TV), RECOMMENDED.map { it.pkg })
     }
 
     private fun TestScope.opened(): CleanBotViewModel {
-        val v = CleanBotViewModel(source, clock = { 0L }, launcherDownload = download)
+        val v = CleanBotViewModel(source, clock = { 0L }, cleanYourTvInstaller = fakeInstaller)
         vm = v
         runCurrent()
         v.openLauncherFlow()
         return v
     }
 
-    @Test fun itDownloadsChecksAndInstallsThenOffersTheSwitch() = with(test) {
+    @Test fun installCleanYourTvChecksSdkInstallsAndRunsPostSetup() = with(test) {
         val v = opened()
-        val flow = v.state.value.device.launcher!!
-        assertEquals(PROJECTIVY, flow.pkg)
-        assertEquals(FireInstall(), flow.fire)
-
-        v.checkProjectivy()
+        v.installCleanYourTvLauncher(enableKeyServices = true)
         runCurrent()
-        assertEquals(FireInstall.Step.Confirm, v.state.value.device.launcher?.fire?.step)
-        assertEquals(PAGE, v.state.value.device.launcher?.fire?.release?.page)
 
-        v.installProjectivy()
-        runCurrent()
-        assertEquals(listOf(PROJECTIVY), source.installs.map { it.packageName })
+        assertEquals(listOf(CLEAN_YOUR_TV), source.installs.map { it.packageName })
+        assertEquals(1, fakeInstaller.postSetupCalls)
         assertEquals(LauncherFlow.Step.Installed, v.state.value.device.launcher?.step)
-        // The install dialog closed with it: left on Installing, it covered the switch and nothing could close it.
-        assertNull(v.state.value.device.launcher?.fire?.step)
+        assertNull(v.state.value.device.launcher?.bundled)
     }
 
-    @Test fun aWrongSignatureInstallsNothing() = with(test) {
-        download.signedByDeveloper = false
+    @Test fun invalidBundledApkRefusesInstallAndShowsInvalidApk() = with(test) {
+        fakeInstaller.validApk = false
         val v = opened()
-        v.checkProjectivy()
+        v.installCleanYourTvLauncher(enableKeyServices = true)
         runCurrent()
-        v.installProjectivy()
-        runCurrent()
-        assertEquals(1, download.fetched)
+
         assertTrue(source.installs.isEmpty())
-        assertEquals(FireInstall.Step.NotProjectivy, v.state.value.device.launcher?.fire?.step)
         assertEquals(LauncherFlow.Step.Pick, v.state.value.device.launcher?.step)
+        assertEquals(CleanYourTvInstallState.Phase.InvalidApk, v.state.value.device.launcher?.bundled?.phase)
     }
 
-    @Test fun withThePlayStoreDownloadDirectlyWarnsFirstThenInstalls() = with(test) {
-        source = FireTv(androidTv, listOf(store, tvHome))
+    @Test fun tvBelowSdk26RefusesInstallCleanly() = with(test) {
+        fakeInstaller.tvSdk = 24
         val v = opened()
-        assertNull(v.state.value.device.launcher?.fire)
-        assertTrue(v.directDownload)
-
-        v.checkProjectivy()
+        v.installCleanYourTvLauncher(enableKeyServices = true)
         runCurrent()
-        val warning = v.state.value.device.launcher?.fire
-        assertEquals(FireInstall.Step.Confirm, warning?.step)
-        assertEquals(true, warning?.store)
+
         assertTrue(source.installs.isEmpty())
-
-        v.installProjectivy()
-        runCurrent()
-        assertEquals(listOf(PROJECTIVY), source.installs.map { it.packageName })
-        assertEquals(LauncherFlow.Step.Installed, v.state.value.device.launcher?.step)
-        assertNull(v.state.value.device.launcher?.fire)
+        assertEquals(CleanYourTvInstallState.Phase.Refused, v.state.value.device.launcher?.bundled?.phase)
     }
 
-    @Test fun cancellingTheWarningGoesBackToThePicker() = with(test) {
-        source = FireTv(androidTv, listOf(store, tvHome))
+    @Test fun pickedLocalCleanYourTvApkInstallsAfterVerification() = with(test) {
         val v = opened()
-        v.checkProjectivy()
+        v.pickedCleanYourTvApk(Uri.parse("content://downloads/tvhome.apk"))
         runCurrent()
-        v.dismissProjectivy()
-        assertEquals(LauncherFlow.Step.Pick, v.state.value.device.launcher?.step)
-        assertNull(v.state.value.device.launcher?.fire)
-        assertEquals(0, download.fetched)
-    }
 
-    @Test fun whenTheApiIsLimitedTheReleasePageGivesTheTagAndItsOneApk() {
-        assertEquals(TAG, latestTag(PAGE))
-        assertNull(latestTag("https://github.com/someone/miproja1/releases/tag/$TAG"))
-        assertNull(latestTag(null))
-        val link = APK.removePrefix("https://github.com")
-        assertEquals(APK, pageApk("""<a href="$link" rel="nofollow">x</a><a href="$link">x</a>""", TAG))
-        assertNull(pageApk("""<a href="$link">a</a><a href="${link.replace(".apk", "-b.apk")}">b</a>""", TAG))
-        assertNull(pageApk("""<a href="${link.replace("/$TAG/", "/4.70/")}">old</a>""", TAG))
-    }
-
-    @Test fun aPickedFileIsCheckedThenInstalled() = with(test) {
-        val v = couldntDownload()
-        v.pickedProjectivy(Uri.parse("content://downloads/1"))
-        runCurrent()
-        assertEquals(listOf(PROJECTIVY), source.installs.map { it.packageName })
+        assertEquals(listOf(CLEAN_YOUR_TV), source.installs.map { it.packageName })
         assertEquals(LauncherFlow.Step.Installed, v.state.value.device.launcher?.step)
     }
 
-    @Test fun aPickedFileThatIsntProjectivyInstallsNothing() = with(test) {
-        download.signedByDeveloper = false
-        val v = couldntDownload()
-        v.pickedProjectivy(Uri.parse("content://downloads/1"))
-        runCurrent()
-        assertTrue(source.installs.isEmpty())
-        val fire = v.state.value.device.launcher?.fire
-        assertEquals(FireInstall.Step.NotProjectivy, fire?.step)
-        assertEquals(true, fire?.picked)
-    }
-
-    @Test fun aPickOutsideAFailedStepIsIgnored() = with(test) {
+    @Test fun pickedNonCleanYourTvApkInstallsNothing() = with(test) {
+        fakeInstaller.validApk = false
         val v = opened()
-        v.pickedProjectivy(Uri.parse("content://downloads/1"))
+        v.pickedCleanYourTvApk(Uri.parse("content://downloads/other.apk"))
         runCurrent()
-        assertTrue(source.installs.isEmpty())
-        assertNull(v.state.value.device.launcher?.fire?.step)
-    }
 
-    private fun TestScope.couldntDownload(): CleanBotViewModel {
-        download.offline = true
-        val v = opened()
-        v.checkProjectivy()
-        runCurrent()
-        assertEquals(FireInstall.Step.NoDownload, v.state.value.device.launcher?.fire?.step)
-        return v
+        assertTrue(source.installs.isEmpty())
+        assertEquals(CleanYourTvInstallState.Phase.InvalidApk, v.state.value.device.launcher?.bundled?.phase)
     }
 }

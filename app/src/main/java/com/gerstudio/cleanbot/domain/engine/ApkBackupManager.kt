@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 package com.gerstudio.cleanbot.domain.engine
 
 import android.content.Context
-import android.os.Environment
 import com.gerstudio.cleanbot.adb.AdbSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,9 +12,8 @@ import java.io.File
 
 class ApkBackupManager(
     private val context: Context,
-    private val session: AdbSession
+    private val session: AdbSession,
 ) {
-
     suspend fun backupPackage(packageName: String): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val paths = getApkPaths(packageName)
@@ -21,12 +21,9 @@ class ApkBackupManager(
                 error("No APK paths found for package: $packageName")
             }
 
-            // Target folder: Download/cLeanBot_Backups/<pkg>/
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                ?: context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                ?: context.filesDir
-
-            val backupDir = File(downloadsDir, "cLeanBot_Backups/$packageName").apply {
+            // Use app external Downloads dir (scoped-storage safe on Android 11-17)
+            val baseDir = context.getExternalFilesDir("backups") ?: File(context.filesDir, "backups")
+            val backupDir = File(baseDir, packageName).apply {
                 if (!exists()) mkdirs()
             }
 

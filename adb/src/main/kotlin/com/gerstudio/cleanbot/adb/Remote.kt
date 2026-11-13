@@ -80,8 +80,11 @@ class Remote(private val session: AdbSession, private val keys: KeyHelper? = nul
     suspend fun scroll(deltaY: Float): Boolean =
         scroll(960f, 540f, deltaY)
 
-    suspend fun pasteClipboard(text: String): Boolean =
-        keys?.pasteClipboard(text) ?: (session.shell("cmd clipboard set text '$text'; input keyevent 279").exitCode == 0)
+    suspend fun pasteClipboard(text: String): Boolean {
+        if (keys?.pasteClipboard(text) == true) return true
+        val r = session.shell("cmd clipboard set text ${shellQuote(text)} 2>&1; input keyevent 279")
+        return r.exitCode == 0 && "Unknown command" !in r.output && "Exception" !in r.output
+    }
 
     /**
      * Turns the TV's picture off or back on, leaving the TV awake so the link stays up. Only the

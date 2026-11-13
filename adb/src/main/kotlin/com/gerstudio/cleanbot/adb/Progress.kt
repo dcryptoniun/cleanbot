@@ -75,4 +75,4 @@ internal fun Sink.counting(total: Long?, stopped: () -> Boolean, onProgress: (Pr
 }
 
 /** One shell word, single-quoted the way adb quotes arguments. */
-internal fun shellQuote(s: String) = "'" + s.replace("'", "'\\''") + "'"
+fun shellQuote(s: String) = "'" + s.replace("'", "'\\''") + "'"

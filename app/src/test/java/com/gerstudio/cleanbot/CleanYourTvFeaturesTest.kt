@@ -24,7 +24,7 @@ class CleanYourTvFeaturesTest {
     @Test
     fun curatedThemes_allHaveValidProperties() {
         val themes = TvTheme.CURATED_THEMES
-        assertTrue(themes.size >= 8)
+        assertTrue(themes.size >= 6)
 
         for (theme in themes) {
             assertTrue(theme.id.isNotEmpty())
@@ -42,14 +42,14 @@ class CleanYourTvFeaturesTest {
         val jsonStr = aurora.toCleanYourTvJson()
         val json = JSONObject(jsonStr)
 
-        assertEquals("aurora", json.getString("theme_name"))
-        assertEquals("Aurora Borealis", json.getString("display_name"))
-        assertTrue(json.getString("accent_color").startsWith("#"))
-        assertTrue(json.getString("background_tint").startsWith("#"))
-        assertEquals("glass_frost", json.getString("dock_style"))
-        assertEquals(1, json.getInt("schema"))
+        assertTrue(json.getString("background_color").startsWith("#"))
+        assertEquals("glass", json.getString("glass_style"))
+        assertTrue(json.getBoolean("dock_glass"))
+        assertTrue(json.getBoolean("dock_band"))
+        assertEquals(80, json.getInt("dock_opacity"))
         assertTrue(json.getBoolean("tile_menu"))
         assertTrue(json.getBoolean("app_library"))
+        assertEquals("24", json.getString("clock_format"))
     }
 
     @Test
@@ -59,7 +59,9 @@ class CleanYourTvFeaturesTest {
         assertEquals(TvDockStyle.OLED_MINIMAL, oled.dockStyle)
 
         val json = JSONObject(oled.toCleanYourTvJson())
-        assertTrue(json.getBoolean("oled_optimized"))
+        assertEquals("#000000", json.getString("background_color"))
+        assertFalse(json.getBoolean("dock_band"))
+        assertFalse(json.getBoolean("cinematic_home"))
     }
 
     @Test
@@ -83,32 +85,27 @@ class CleanYourTvFeaturesTest {
     }
 
     @Test
-    fun curatedLaunchers_includeCleanYourTvAndCommunityFavorites() {
+    fun curatedLaunchers_onlyOffersCleanYourTv() {
         val launchers = TvLauncherInfo.CURATED_LAUNCHERS
 
-        val cleanYourTv = launchers.firstOrNull { it.packageName == "com.gathin.tvhome" }
+        assertEquals(1, launchers.size)
+        val cleanYourTv = launchers.firstOrNull { it.packageName == TvLauncherInfo.CLEAN_YOUR_TV_PKG }
         assertNotNull(cleanYourTv)
         assertTrue(cleanYourTv!!.isCleanYourTvOfficial)
         assertTrue(cleanYourTv.isOpenSource)
+        assertTrue(cleanYourTv.supportsAccessibilityRemap)
+        assertNotNull(cleanYourTv.accessibilityServiceComponent)
         assertEquals("CleanYourTV Launcher", cleanYourTv.name)
-
-        val projectivy = launchers.firstOrNull { it.packageName == "com.spocky.projengmenu" }
-        assertNotNull(projectivy)
-        assertTrue(projectivy!!.supportsAccessibilityRemap)
-        assertNotNull(projectivy.accessibilityServiceComponent)
-
-        val flauncher = launchers.firstOrNull { it.packageName == "me.efesser.flauncher" }
-        assertNotNull(flauncher)
-        assertTrue(flauncher!!.isOpenSource)
-        assertEquals(3, launchers.size)
+        assertEquals("3.4", cleanYourTv.versionName)
+        assertEquals(13, cleanYourTv.versionCode)
     }
 
     @Test
     fun clockStyles_haveDistinctLabels() {
         val styles = TvClockStyle.entries
-        assertEquals(4, styles.size)
+        assertEquals(3, styles.size)
         val labels = styles.map { it.label }.distinct()
-        assertEquals(4, labels.size)
+        assertEquals(3, labels.size)
     }
 
     @Test

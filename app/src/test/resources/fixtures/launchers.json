@@ -1,8 +1,6 @@
 {
   "schema": 1,
   "launchers": [
-    { "package": "com.spocky.projengmenu", "name": "Projectivy Launcher", "about": "The most popular. Rows, wallpapers and icons you can change." },
-    { "package": "me.efesser.flauncher", "name": "FLauncher", "about": "Simple: your apps in rows, nothing else." },
-    { "package": "com.wolf.firelauncher", "name": "Wolf Launcher" }
+    { "package": "com.gathin.tvhome", "name": "CleanYourTV Launcher", "about": "Fast, open-source, ad-free TV home screen from Gathin23/cleanyourtv." }
   ]
 }

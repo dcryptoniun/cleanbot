@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "launchers": [
+    {
+      "package": "com.gathin.tvhome",
+      "name": "CleanYourTV Launcher",
+      "about": "Fast, open-source, ad-free TV home screen bundled from Gathin23/cleanyourtv (v3.4)."
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.Tv
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Curated Debloat Presets inspired by CleanYourTV and community device lists.
+ * Curated debloat presets derived from Gathin23/cleanyourtv examples and universal TV rules.
  */
 data class CuratedDebloatPreset(
     val id: String,
@@ -41,19 +41,20 @@ data class CuratedDebloatPreset(
                 id = "cleanyourtv_safe",
                 title = "CleanYourTV Safe Clean",
                 subtitle = "Recommended for All TVs",
-                description = "Disables sponsored ad banners, OEM tracking daemons, and background analytics while keeping casting, Google Play, audio, and all core features 100% operational.",
+                description = "Disables sponsored ad rows, Google & OEM telemetry, partner auto-installers, and feedback daemons while keeping casting, Play Store, audio, and HDMI inputs 100% intact.",
                 icon = Icons.Default.CleaningServices,
                 packagePatterns = listOf(
                     "com.google.android.tvrecommendations",
                     "com.google.android.tv.ads",
-                    "com.google.android.tungsten.setupwraith",
                     "com.google.android.feedback",
                     "com.google.android.partnersetup",
                     "com.android.providers.partnerbookmarks",
+                    "android.autoinstalls.config.*",
                     "com.xiaomi.mitv.advertise",
                     "com.xiaomi.mitv.upgrade",
                     "com.xiaomi.mitv.analytics",
                     "com.tcl.tv.ad",
+                    "com.tcl.bootadservice",
                     "com.tcl.useragreement",
                     "com.tcl.system.analytics",
                     "com.hisense.hitv.analytics",
@@ -67,8 +68,8 @@ data class CuratedDebloatPreset(
             CuratedDebloatPreset(
                 id = "cleanyourtv_ultra",
                 title = "Ultra Clean Home",
-                subtitle = "Apple TV Experience",
-                description = "Strips stock ad-laden Google TV Home and recommendation overlays. Ideal when switching to CleanYourTV, Projectivy, or FLauncher for maximum TV RAM and zero ads.",
+                subtitle = "Switch to CleanYourTV Launcher",
+                description = "Safely freezes stock ad-heavy home launchers once CleanYourTV Launcher is installed and active, reclaiming RAM and removing sponsored rows.",
                 icon = Icons.Default.Speed,
                 packagePatterns = listOf(
                     "com.google.android.apps.tv.launcherx",
@@ -84,9 +85,9 @@ data class CuratedDebloatPreset(
             ),
             CuratedDebloatPreset(
                 id = "fire_tv_unchained",
-                title = "Fire TV Unchained",
+                title = "Fire TV Clean",
                 subtitle = "Amazon Fire OS Specific",
-                description = "Removes Amazon home screen advertising carousels, sponsored screensavers, shopping background services, and telemetry for Fire TV sticks and cubes.",
+                description = "Freezes Amazon home ad banners, sponsored screensavers, shopping daemons, and ACR telemetry on Fire TV sticks and editions.",
                 icon = Icons.Default.LocalFireDepartment,
                 packagePatterns = listOf(
                     "com.amazon.tv.launcher",
@@ -99,13 +100,13 @@ data class CuratedDebloatPreset(
                     "com.amazon.device.software.ota",
                     "com.amazon.hedwig"
                 ),
-                requiresCustomLauncherInstalled = true
+                requiresCustomLauncherInstalled = false
             ),
             CuratedDebloatPreset(
                 id = "telemetry_killer",
                 title = "Telemetry & Privacy Shield",
-                subtitle = "Kill Tracking & Analytics",
-                description = "Terminates background diagnostic reporting, crash telemetry, user habit analytics, and ad identification services across all TV manufacturers.",
+                subtitle = "Stop Tracking & ACR",
+                description = "Stops ACR watchers, diagnostic loggers, crash reporters, user habit analytics, and ad-ID daemons across TV makers.",
                 icon = Icons.Default.Security,
                 packagePatterns = listOf(
                     "*.analytics",
@@ -114,16 +115,18 @@ data class CuratedDebloatPreset(
                     "*.crashdump",
                     "com.google.android.gms.ads",
                     "com.google.android.gms.measurement",
+                    "com.google.android.adservices.api",
                     "com.xiaomi.mitv.tracker",
                     "com.tcl.datacenter",
-                    "com.hisense.analytics"
+                    "com.hisense.analytics",
+                    "com.anoki.fast"
                 )
             ),
             CuratedDebloatPreset(
                 id = "oem_clutter",
                 title = "OEM Factory Clutter",
-                subtitle = "Manufacturer Stubs & Demos",
-                description = "Removes pre-installed manufacturer demo loops, promotional partner stubs, and unused default apps that take up precious internal storage.",
+                subtitle = "Retail Demos & Preloads",
+                description = "Removes retail demo loops, promotional partner stubs, and unused bundled junk to reclaim TV storage.",
                 icon = Icons.Default.Tv,
                 packagePatterns = listOf(
                     "com.tcl.browser",

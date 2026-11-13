@@ -35,9 +35,9 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 private const val TV_HOME = "com.google.android.tvlauncher"
-private const val PROJECTIVY = "com.spocky.projengmenu"
+private const val PROJECTIVY = "com.gathin.tvhome"
 private const val FLAUNCHER = "me.efesser.flauncher"
-private const val PROJECTIVY_SERVICE = "$PROJECTIVY/.HomeService"
+private const val PROJECTIVY_SERVICE = "$PROJECTIVY/.HomeKeyService"
 
 /** A TV with its own launcher and two the user added; Projectivy has an accessibility service. */
 private class LauncherTv(var home: String?) : AdbSession {

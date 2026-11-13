@@ -203,6 +203,8 @@ class FakeDeviceSource(
         ),
     )
 
+    private val archivedUser0 = mutableMapOf<String, AppInfo>()
+
     override suspend fun act(deviceId: String, action: Action, packageName: String, undoing: Long?): HistoryEntry {
         delay(400)
         val list = appsFor(deviceId)
@@ -214,11 +216,25 @@ class FakeDeviceSource(
             return book.record(deviceId, clock(), Action.Change, packageName, UiText(R.string.data_history_reset_undone).text(), null, undoing)
         }
         val i = list.indexOfFirst { it.packageName == packageName }
-        val app = list[i]
+        val archived = archivedUser0[packageName]
+        val app = when {
+            i >= 0 -> list[i]
+            archived != null && action == Action.RestoreExisting -> archived
+            else -> return book.record(deviceId, clock(), action, packageName, AppNames.fallback(packageName), null, undoing)
+        }
         when (action) {
-            Action.Disable -> list[i] = app.copy(enabled = false)
-            Action.Enable, Action.RestoreExisting -> list[i] = app.copy(enabled = true)
-            Action.Uninstall, Action.UninstallUser0 -> list.removeAt(i)
+            Action.Disable -> if (i >= 0) list[i] = app.copy(enabled = false)
+            Action.Enable -> if (i >= 0) list[i] = app.copy(enabled = true)
+            Action.RestoreExisting -> {
+                val restored = (archived ?: app).copy(enabled = true)
+                archivedUser0.remove(packageName)
+                if (i >= 0) list[i] = restored else list.add(restored)
+            }
+            Action.Uninstall -> if (i >= 0) list.removeAt(i)
+            Action.UninstallUser0 -> if (i >= 0) {
+                archivedUser0[packageName] = app.copy(enabled = false)
+                list.removeAt(i)
+            }
             Action.Stop, Action.Open, Action.Change, Action.ClearCaches, Action.Home, Action.HomeBack, Action.Reset -> Unit
         }
         val undo = when (action) {
@@ -317,7 +333,7 @@ class FakeDeviceSource(
 
     private val baseFiles get() = listOf(
         TvFile("holiday-2025.mp4", 812_000_000, clock() - 3 * 86_400_000L),
-        TvFile("projectivy-backup.plbackup", 48_200, clock() - 26 * 3_600_000L),
+        TvFile("cleanyourtv-backup.json", 48_200, clock() - 26 * 3_600_000L),
         TvFile("subtitles.srt", 61_000, clock() - 40 * 60_000L),
     )
 
@@ -481,7 +497,7 @@ class FakeDeviceSource(
 
 
         val baseApps = listOf(
-            AppInfo("com.spocky.projengmenu", "Projectivy Launcher", 0xFF3D5AFE, false, true, UiText(R.string.data_protected_home_screen), "4.52", launchable = true),
+            AppInfo("com.gathin.tvhome", "CleanYourTV Launcher", 0xFF4B582B, false, true, UiText(R.string.data_protected_home_screen), "3.4", launchable = true),
             AppInfo("com.google.android.youtube.tv", "YouTube", 0xFFC4302B, false, true, null, "4.40.303", launchable = true),
             AppInfo("com.netflix.ninja", "Netflix", 0xFFB20710, false, true, null, "11.2.0", removable = true, launchable = true),
             AppInfo("org.jellyfin.androidtv", "Jellyfin", 0xFF7B5EA7, false, true, null, "0.17.4", removable = true, launchable = true),
@@ -497,7 +513,7 @@ class FakeDeviceSource(
         val baseProcs = listOf(
             Proc(412, "surfaceflinger", null, 9.0, 38),
             Proc(688, "system_server", null, 6.0, 214),
-            Proc(1502, "com.spocky.projengmenu", "com.spocky.projengmenu", 2.0, 312),
+            Proc(1502, "com.gathin.tvhome", "com.gathin.tvhome", 2.0, 48),
             Proc(2210, "com.google.android.youtube.tv", "com.google.android.youtube.tv", 4.0, 220),
             Proc(2241, "com.google.android.youtube.tv:service", "com.google.android.youtube.tv", 1.0, 41),
             Proc(1980, "com.google.android.gms.persistent", "com.google.android.gms", 1.0, 118),

@@ -117,7 +117,7 @@ class AdbDeviceSource(context: Context) : DeviceSource {
     private val keyHelpers = ConcurrentHashMap<String, KeyHelper>()
     private val helperDex by lazy { appContext.assets.open("label-helper.jar").use { it.readBytes() } }
     private val appNames = AppNames(File(appContext.filesDir, "app-names"))
-    private val lists = DeviceLists(File(appContext.filesDir, "lists"))
+    private val lists = DeviceLists(File(appContext.filesDir, "lists"), assetOpener = appContext.assets::open)
     /** [historyKey] → the keep entries of that TV's list, once it has been looked up. */
     private val keep = ConcurrentHashMap<String, Set<String>>()
 
@@ -431,9 +431,21 @@ class AdbDeviceSource(context: Context) : DeviceSource {
         // The card stays until Got it, which notes it on the switch; the next switch shows it again.
         val note = serviceOff && back.reverses.let { id -> book.entries(key(deviceId)).firstOrNull { it.id == id } }
             ?.let { it.previous?.get("note") != "dismissed" } == true
+        val actions = Actions(shell)
+        val runtimeHandlers = actions.runtimeProtectedHandlers()
+        val setupwraithWifiOwned = if (listed.any { it.name == "com.google.android.tungsten.setupwraith" }) {
+            actions.setupwraithOwnsWifi()
+        } else null
         return listed.map { p ->
             val name = names.getValue(p.name)
             labels[p.name] = name.label
+            val baseProtected = when {
+                p.name in disabled -> null
+                home == null -> ProtectedReason.UNKNOWN_HOME
+                p.name == "com.google.android.tungsten.setupwraith" && setupwraithWifiOwned == false -> null
+                else -> Protected.reason(p.name, home, userApp = p.name in userInstalled)
+                    ?: if (p.name in runtimeHandlers) ProtectedReason.TV_INPUTS_REMOTE else null
+            }
             AppInfo(
                 packageName = p.name,
                 label = name.label,
@@ -445,11 +457,7 @@ class AdbDeviceSource(context: Context) : DeviceSource {
                 // Same rule as Actions.run: no known launcher, nothing can be stopped or disabled.
                 // A disabled app stays unprotected so Enable (always allowed) still shows, even
                 // for a built-in launcher that is off.
-                protectedReason = when {
-                    p.name in disabled -> null
-                    home != null -> Protected.reason(p.name, home, userApp = p.name in userInstalled)
-                    else -> ProtectedReason.UNKNOWN_HOME
-                }?.let(::reasonText),
+                protectedReason = baseProtected?.let(::reasonText),
                 version = "",
                 icon = name.icon,
                 removable = p.name in userInstalled,
@@ -548,7 +556,11 @@ class AdbDeviceSource(context: Context) : DeviceSource {
         undoing?.let { id -> book.entries(key).firstOrNull { it.id == id } }?.firstHomeService
             ?.let { return firstHomeServiceOff(deviceId, packageName, it, undoing) }
         if (action == Action.Uninstall && Actions(shell).homeOptions()?.current == packageName) return uninstallHome(deviceId, packageName)
-        val r = Actions(shell).run(AdbAction.valueOf(action.name.uppercase()), packageName)
+        val r = Actions(shell).run(
+            action = action.toAdbAction(),
+            pkg = packageName,
+            allowSetupwraithIfSafe = (packageName == "com.google.android.tungsten.setupwraith"),
+        )
         return when (r) {
             is ActionResult.Done -> {
                 // Undoing a home switch: the old launcher is on again, now make it Home again too.
@@ -561,7 +573,7 @@ class AdbDeviceSource(context: Context) : DeviceSource {
                     packageName = packageName,
                     label = labels[packageName] ?: AppNames.fallback(packageName),
                     // Disabling the home screen is refused anyway; offer no undo that can't work.
-                    undo = if (switch != null) null else r.undo?.let { Action.valueOf(it.name.lowercase().replaceFirstChar(Char::uppercase)) },
+                    undo = if (switch != null) null else r.undo?.toAppAction(),
                     undoing = undoing,
                 ).also { if (back == false) throw UiTextException(homeNotBack(it.label)) }
             }
@@ -1184,6 +1196,28 @@ class AdbDeviceSource(context: Context) : DeviceSource {
             // Read after state: the link writes it first, so a fresh refusal never shows an old logout.
             loggedOutAt = link?.loggedOutAt?.value?.takeIf { state == AdbState.NOT_ALLOWED },
         )
+    }
+
+    private fun Action.toAdbAction(): AdbAction = when (this) {
+        Action.Stop -> AdbAction.STOP
+        Action.Disable -> AdbAction.DISABLE
+        Action.Enable -> AdbAction.ENABLE
+        Action.Open -> AdbAction.OPEN
+        Action.Uninstall -> AdbAction.UNINSTALL
+        Action.UninstallUser0 -> AdbAction.UNINSTALL_USER_0
+        Action.RestoreExisting -> AdbAction.RESTORE_EXISTING
+        Action.Change, Action.ClearCaches, Action.Home, Action.HomeBack, Action.Reset ->
+            throw IllegalArgumentException("Not a shell package action: $this")
+    }
+
+    private fun AdbAction.toAppAction(): Action = when (this) {
+        AdbAction.STOP -> Action.Stop
+        AdbAction.DISABLE -> Action.Disable
+        AdbAction.ENABLE -> Action.Enable
+        AdbAction.OPEN -> Action.Open
+        AdbAction.UNINSTALL -> Action.Uninstall
+        AdbAction.UNINSTALL_USER_0, AdbAction.UNINSTALL_USER_0_KEEP -> Action.UninstallUser0
+        AdbAction.RESTORE_EXISTING -> Action.RestoreExisting
     }
 
     private fun tcpState(st: Int) = when (st) {

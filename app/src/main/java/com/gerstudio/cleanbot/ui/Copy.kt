@@ -106,7 +106,7 @@ object Copy {
     val MAKE_HOME = UiText(R.string.copy_make_home)
     val GET_LAUNCHER = UiText(R.string.copy_get_launcher)
     val GET_LAUNCHER_TEXT = UiText(R.string.copy_get_launcher_text)
-    val GET_PROJECTIVY_TEXT = UiText(R.string.copy_get_projectivy_text)
+    val GET_CLEAN_YOUR_TV_TEXT = UiText(R.string.copy_get_projectivy_text)
 
     /** The Apps tab's launcher rows: switching lives in the card, this opens it. */
     val HOME_SETTINGS = UiText(R.string.copy_home_settings)
@@ -252,8 +252,8 @@ object Copy {
     /** The Store closed without an install: back on the picker, still chosen. */
     fun wasntInstalled(name: String) = UiText(R.string.copy_wasnt_installed, name)
 
-    /** Install Projectivy on Fire OS: cLeanBot downloads it from its developer's GitHub and installs it over adb. */
-    val INSTALL_PROJECTIVY = UiText(R.string.copy_install_projectivy)
+    /** Install CleanYourTV Launcher v3.4 from bundled offline APK (`assets/tvhome.apk`). */
+    val INSTALL_CLEAN_YOUR_TV = UiText(R.string.copy_install_projectivy)
     val FIRE_INSTALL_TEXT = UiText(R.string.copy_fire_install_text)
 
     fun downloadsFrom(name: String) = UiText(R.string.copy_downloads_from, name)
@@ -264,15 +264,12 @@ object Copy {
     val SIGNED_CHECK = UiText(R.string.copy_signed_check)
     val DOWNLOAD_AND_INSTALL = UiText(R.string.copy_download_and_install)
 
-    /** Download directly on a TV with the Play Store: what cLeanBot checks, what it doesn't, and the safer way. */
-    fun downloadDirectly(name: String) = UiText(R.string.copy_download_directly_title, name)
-
     val DIRECT_CHECK = UiText(R.string.copy_direct_check)
     val STORE_SAFER = UiText(R.string.copy_store_safer)
     val DOWNLOAD_ANYWAY = UiText(R.string.copy_download_anyway)
     val STORE_INSTEAD = UiText(R.string.copy_store_instead)
 
-    /** Install Projectivy's steps, one panel: download (or the picked file), the check, the install. */
+    /** CleanYourTV APK verification and install steps. */
     fun installing(name: String) = UiText(R.string.copy_installing, name)
     val STEP_DOWNLOAD = UiText(R.string.copy_step_download)
     val STEP_DOWNLOADED = UiText(R.string.copy_step_downloaded)
@@ -288,16 +285,15 @@ object Copy {
 
     fun installingOn(tv: String) = UiText(R.string.copy_installing_on, tv)
 
-    /** X while it downloads: nothing is on the TV yet. */
     val STOP_TITLE = UiText(R.string.copy_stop_title)
     val STOP_TEXT = UiText(R.string.copy_stop_text)
     val STOP = UiText(R.string.copy_stop)
     val KEEP_DOWNLOADING = UiText(R.string.copy_keep_downloading)
 
-    val NOT_PROJECTIVY = UiText(R.string.copy_not_projectivy)
-    val NOT_PROJECTIVY_TEXT = UiText(R.string.copy_not_projectivy_text)
-    val NOT_PROJECTIVY_FILE = UiText(R.string.copy_not_projectivy_file)
-    val NOT_PROJECTIVY_FILE_TEXT = UiText(R.string.copy_not_projectivy_file_text)
+    val NOT_CLEAN_YOUR_TV = UiText(R.string.copy_not_projectivy)
+    val NOT_CLEAN_YOUR_TV_TEXT = UiText(R.string.copy_not_projectivy_text)
+    val NOT_CLEAN_YOUR_TV_FILE = UiText(R.string.copy_not_projectivy_file)
+    val NOT_CLEAN_YOUR_TV_FILE_TEXT = UiText(R.string.copy_not_projectivy_file_text)
     val CANT_READ_FILE = UiText(R.string.copy_cant_read_file)
     fun cantInstall(name: String) = UiText(R.string.copy_cant_install, name)
 

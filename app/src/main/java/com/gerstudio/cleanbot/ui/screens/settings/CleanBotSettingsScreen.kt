@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,17 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,24 +47,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gerstudio.cleanbot.data.datastore.ColorPalette
-import com.gerstudio.cleanbot.data.datastore.ThemeMode
 import com.gerstudio.cleanbot.data.datastore.UserPreferences
 import com.gerstudio.cleanbot.data.model.PackageActionMode
+import com.gerstudio.cleanbot.ui.theme.CleanBotPalette
+import com.gerstudio.cleanbot.ui.theme.rememberCleanBotHaptics
 
 @Composable
 fun CleanBotSettingsScreen(
     preferences: UserPreferences,
     tvMacAddress: String?,
-    onSetThemeMode: (ThemeMode) -> Unit,
-    onSetColorPalette: (ColorPalette) -> Unit,
+    onSetHapticsEnabled: (Boolean) -> Unit,
     onSetLivingRoomAutoDim: (Boolean) -> Unit,
     onSetDefaultActionMode: (PackageActionMode) -> Unit,
     onSetBackupApkBeforeUninstall: (Boolean) -> Unit,
+    onSetKeepDataOnUninstall: (Boolean) -> Unit = {},
     onWakeOnLan: (mac: String) -> Unit,
     onExportPreset: () -> Unit,
     onImportPreset: () -> Unit,
@@ -73,117 +73,82 @@ fun CleanBotSettingsScreen(
     onRateApp: (() -> Unit)? = null,
     onCheckForUpdate: (() -> Unit)? = null,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    showBackButton: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberCleanBotHaptics()
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(CleanBotPalette.DesertSand)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            if (showBackButton) {
+                IconButton(onClick = { haptics.tap(); onBack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
             }
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Settings & Toolkit",
+                text = "Settings & Maintenance",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // SECTION: Multi-Theme Engine
+        // SECTION: Tactical Palette & Haptics
         Text(
-            text = "Visual Appearance & Themes",
+            text = "Appearance & Tactile Feedback",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = CleanBotPalette.OliveDrab,
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            modifier = Modifier.fillMaxWidth()
+            colors = CardDefaults.cardColors(containerColor = CleanBotPalette.DesertSandBright),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Theme Mode",
+                    text = "Signature Palette (60-30-10)",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold,
+                    color = CleanBotPalette.OliveDrab,
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ThemeMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = preferences.themeMode == mode,
-                            onClick = { onSetThemeMode(mode) },
-                            label = { Text(mode.name.lowercase().replaceFirstChar(Char::uppercase)) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Color Palette",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val palettes = listOf(
-                        Triple(ColorPalette.CLEANBOT_EMERALD, "cLeanBot Emerald", Color(0xFF00796B)),
-                        Triple(ColorPalette.DYNAMIC_MATERIAL_YOU, "Material You", Color(0xFF2E7D32)),
-                        Triple(ColorPalette.AMOLED_PITCH_BLACK, "AMOLED Pitch Black", Color(0xFF000000)),
-                        Triple(ColorPalette.CATPPUCCIN_MOCHA, "Catppuccin Mocha", Color(0xFFCBA6F7)),
-                        Triple(ColorPalette.DRACULA, "Dracula", Color(0xFFBD93F9)),
-                        Triple(ColorPalette.NORD, "Nord", Color(0xFF88C0D0))
-                    )
-
-                    palettes.forEach { (palette, name, sampleColor) ->
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (preferences.colorPalette == palette) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
-                            ),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { onSetColorPalette(palette) }
+                    listOf(
+                        CleanBotPalette.DesertSand to "Desert Sand (60%)",
+                        CleanBotPalette.OliveDrab to "Olive Drab (30%)",
+                        CleanBotPalette.SignalYellow to "Signal Yellow (10%)",
+                    ).forEach { (swatch, name) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f),
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(CircleShape)
-                                        .background(sampleColor)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = name,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (preferences.colorPalette == palette) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(swatch),
+                            )
+                            Text(name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -193,23 +158,54 @@ fun CleanBotSettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Living Room Auto-Dim",
+                            text = "Tactile Haptics",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            text = "Switches to AMOLED Pitch Black when opening the Remote to reduce room glare",
+                            text = "Vibrate subtly on taps, toggles, and debloat actions",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = CleanBotPalette.SandMutedInk,
+                        )
+                    }
+                    Switch(
+                        checked = preferences.hapticsEnabled,
+                        onCheckedChange = {
+                            haptics.toggle(it)
+                            onSetHapticsEnabled(it)
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Subtle Remote Glare Reduction",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "Softens remote highlights in dim living rooms",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CleanBotPalette.SandMutedInk,
                         )
                     }
                     Switch(
                         checked = preferences.livingRoomAutoDim,
-                        onCheckedChange = onSetLivingRoomAutoDim
+                        onCheckedChange = {
+                            haptics.toggle(it)
+                            onSetLivingRoomAutoDim(it)
+                        },
                     )
                 }
             }
@@ -261,23 +257,54 @@ fun CleanBotSettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Backup APK before Uninstall",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            text = "Extracts and saves APK to Phone before deleting from TV",
+                            text = "Extracts and saves APK to Phone before removing from TV",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = CleanBotPalette.SandMutedInk,
                         )
                     }
                     Switch(
                         checked = preferences.backupApkBeforeUninstall,
-                        onCheckedChange = onSetBackupApkBeforeUninstall
+                        onCheckedChange = {
+                            haptics.toggle(it)
+                            onSetBackupApkBeforeUninstall(it)
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Keep Data on User 0 Uninstall",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "Pass -k flag when removing packages so logins & caches stay recoverable",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CleanBotPalette.SandMutedInk,
+                        )
+                    }
+                    Switch(
+                        checked = preferences.keepDataOnUninstall,
+                        onCheckedChange = {
+                            haptics.toggle(it)
+                            onSetKeepDataOnUninstall(it)
+                        },
                     )
                 }
             }
@@ -488,11 +515,10 @@ fun CleanBotSettingsScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "• CleanYourTV (@Gathin23): Themes studio, dock styles, and curated debloat profiles\n" +
+                    text = "• CleanYourTV (@Gathin23): Launcher v3.4, themes studio, and curated debloat profiles\n" +
                             "• Tellyscope (@man15h): Foundational companion app architecture and remote\n" +
                             "• Kadb & Dadb (@flyfishxu & Mobile-dev): Pure Kotlin ADB wireless protocol\n" +
-                            "• spake2-java (@Flyfish233): Android 11+ SPAKE2 pairing\n" +
-                            "• Projectivy & FLauncher: Open-source TV launcher pioneers",
+                            "• spake2-java (@Flyfish233): Android 11+ SPAKE2 pairing",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp

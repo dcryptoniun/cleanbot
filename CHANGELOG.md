@@ -12,6 +12,16 @@ until this file has a section for its version.
 
 ## Unreleased
 
+## 1.4.1 — 2026-11-13
+
+- **New:** Dead simple UI with unified 60-30-10 palette (Desert Sand, Olive Drab, Signal Yellow).
+- **New:** Bundled CleanYourTV launcher (v3.4) and catalog (468 TV models) with live upstream sync.
+- **New:** Fluid entrance animations, tactical pulse beacon, signal progress bars, and tactile haptics.
+- **Improved:** Strict launcher focus exclusively on CleanYourTV Launcher, removing third-party alternatives.
+- **Improved:** Navigation 3 runtime and Material3 adaptive scaffold with edge-to-edge layout across devices.
+- **Improved:** Upgraded dependencies to Android Gradle Plugin 9.5.1, Target SDK 37, and Material3 1.5.0-rc01.
+- **Fixed:** File repository transfers, directory navigation, and CleanBotViewModel startup initialization order.
+
 ## 1.3.1 — 2026-11-08
 
 - **New:** Direct access to CleanBot Settings & Toolkit from top bar and support screen to customize theme feel, color palettes (Emerald, Cyan, Amethyst, Sunset, AMOLED), and debloat engine. [#301](../../pull/301)

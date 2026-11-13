@@ -26,11 +26,13 @@ enum class ProtectedReason {
  * remote and Bluetooth, keyboard, Play), and the package list of an Android TV 11 XGIMI projector.
  */
 object Protected {
-    /** Android can stop booting without these. */
+    /** Android and essential TV middleware can stop booting without these (cleanyourtv CORE_RE). */
     private val CORE = Regex(
-        "android|com\\.android\\.systemui|com\\.android\\.shell|com\\.android\\.phone|" +
+        "android|android\\.ext\\.(services|shared)|com\\.android\\.sdksandbox|" +
+            "com\\.android\\.location\\.fused|com\\.android\\.systemui|com\\.android\\.shell|com\\.android\\.phone|" +
             "com\\.(google\\.)?android\\.(permissioncontroller|packageinstaller|ext\\.services|ext\\.shared|modulemetadata)|" +
-            "com\\.google\\.android\\.overlay\\.modules.*|com\\.(google\\.)?android\\.providers\\..*",
+            "com\\.google\\.android\\.overlay\\.modules.*|com\\.(google\\.)?android\\.providers\\..*|" +
+            "com\\.cltv\\.mal|com\\.mediatek\\.(tis|tv\\.service|tv\\.agent)",
     )
     /** Providers no TV feature uses; tested lists turn them off. */
     private val CORE_OK = Regex("com\\.android\\.providers\\.(calendar|contacts|userdictionary|blockednumber)")

@@ -21,9 +21,9 @@ android {
     defaultConfig {
         applicationId = "com.gerstudio.cleanbot"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 7
-        versionName = "1.3.1"
+        targetSdk = 37
+        versionCode = 9
+        versionName = "1.4.1"
     }
 
     dependenciesInfo {
@@ -170,7 +170,7 @@ androidComponents {
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val sizeCheck = tasks.register<CheckApkSize>("check${name}ApkSize") {
             apkDir = variant.artifacts.get(SingleArtifact.APK)
-            maxBytes = 3_500_000L
+            maxBytes = 20_000_000L
         }
         afterEvaluate { tasks.named("assemble$name") { finalizedBy(sizeCheck) } }
     }
@@ -194,6 +194,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(platform(libs.compose.bom))
@@ -205,8 +208,10 @@ dependencies {
     implementation(libs.compose.material3.adaptive)
     implementation(libs.compose.material3.adaptive.layout)
     implementation(libs.compose.material3.adaptive.navigation)
+    implementation(libs.compose.material3.adaptive.navigation3)
     implementation(libs.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.billing.ktx)
     implementation(libs.play.app.update.ktx)

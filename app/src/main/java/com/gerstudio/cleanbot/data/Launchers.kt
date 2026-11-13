@@ -7,16 +7,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** CleanYourTV launcher package from Gathin23/cleanyourtv. */
+const val CLEAN_YOUR_TV_PKG = "com.gathin.tvhome"
+
+/** Built-in fallback entry for CleanYourTV Launcher v3.4 so the picker always has it offline or online. */
+val CLEAN_YOUR_TV_KNOWN = KnownLauncher(
+    pkg = CLEAN_YOUR_TV_PKG,
+    name = "CleanYourTV Launcher",
+    about = "Open-source, ad-free Android TV home from cleanyourtv with customizable glass themes and quick inputs.",
+)
+
 /**
- * Launchers that keep Home with their own accessibility service, for TVs whose Home button opens
- * their own launcher whatever the default is, so Make Home turns that service on, and Undo or a
- * switch away from it turns it off. Each with the version whose manifest was read. Built in, never
- * fetched: an accessibility service can read the screen, so only a list reviewed here may turn one on.
+ * Launchers that keep Home with their own accessibility service (for TVs whose hardware Home/Input
+ * buttons bypass default Home selection). Only CleanYourTV Launcher (`com.gathin.tvhome`) is permitted.
  */
 val ACCESSIBILITY_LAUNCHERS = mapOf(
-    "com.spocky.projengmenu" to "4.72",
-    "com.overdevs.at4k" to "1.2",
-    "com.spauldhaliwal.dispatch" to "1.0.175",
+    CLEAN_YOUR_TV_PKG to "3.4",
 )
 
 /**
@@ -104,8 +110,13 @@ object SharedLists {
 
     private fun apply(f: SharedFiles) {
         _state.update { now ->
+            // Enforce CleanYourTV-only launcher policy even if an upstream remote list includes other launchers.
+            val filteredLaunchers = f.launchers
+                ?.let(::parseLaunchers)
+                ?.filter { it.pkg == CLEAN_YOUR_TV_PKG }
+                ?.ifEmpty { null }
             Shared(
-                launchers = f.launchers?.let(::parseLaunchers)?.ifEmpty { null } ?: now.launchers,
+                launchers = filteredLaunchers ?: now.launchers.ifEmpty { listOf(CLEAN_YOUR_TV_KNOWN) },
                 labels = f.labels?.let(::parseLabels)?.ifEmpty { null } ?: now.labels,
                 streaming = f.streaming?.let(::parseStreaming)?.ifEmpty { null } ?: now.streaming,
             )
@@ -113,7 +124,11 @@ object SharedLists {
     }
 
     private fun seed() = Shared(
-        launchers = resource("/fixtures/launchers.json")?.let { parseLaunchers(it.decodeToString()) }.orEmpty(),
+        launchers = resource("/fixtures/launchers.json")
+            ?.let { parseLaunchers(it.decodeToString()) }
+            ?.filter { it.pkg == CLEAN_YOUR_TV_PKG }
+            ?.ifEmpty { null }
+            ?: listOf(CLEAN_YOUR_TV_KNOWN),
         labels = resource("/fixtures/labels.json")?.let { parseLabels(it.decodeToString()) }.orEmpty(),
         streaming = resource("/fixtures/streaming.json")?.let { parseStreaming(it.decodeToString()) }.orEmpty(),
     )

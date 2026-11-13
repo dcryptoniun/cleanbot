@@ -1,15 +1,22 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 package com.gerstudio.cleanbot.data.model
 
 object SafetyClassifier {
 
     /**
-     * Hard Protected List: Core system packages essential for booting, Wi-Fi connectivity,
-     * system updates, display outputs, setup wizards, input methods, Bluetooth, audio,
-     * and recovery are strictly locked and can NEVER be disabled or uninstalled.
+     * Hard Protected List aligned with cleanyourtv `tools/disable.sh` (`CORE_RE` minus `CORE_OK`)
+     * plus essential input/Bluetooth/networking packages that must never be disabled or uninstalled.
      */
     val CORE_PACKAGES = setOf(
         "android",
+        "android.ext.services",
+        "android.ext.shared",
+        "com.android.sdksandbox",
+        "com.android.location.fused",
         "com.android.systemui",
+        "com.android.shell",
+        "com.android.phone",
         "com.android.settings",
         "com.android.providers.settings",
         "com.android.tv.settings",
@@ -18,11 +25,15 @@ object SafetyClassifier {
         "com.google.android.packageinstaller",
         "com.android.permissioncontroller",
         "com.google.android.permissioncontroller",
-        "com.android.shell",
+        "com.android.ext.services",
+        "com.google.android.ext.services",
+        "com.android.ext.shared",
+        "com.google.android.ext.shared",
+        "com.android.modulemetadata",
+        "com.google.android.modulemetadata",
         "com.android.keyguard",
         "com.android.provision",
         "com.google.android.setupwizard",
-        "com.google.android.tungsten.setupwraith",
         "com.google.android.onetimeinitializer",
         "com.android.webview",
         "com.google.android.webview",
@@ -37,24 +48,38 @@ object SafetyClassifier {
         "com.google.android.networkstack",
         "com.google.android.networkstack.tethering",
         "com.android.wifi.resources",
+        "com.google.android.wifi.resources",
         "com.android.server.telecom",
         "com.android.providers.telephony",
         "com.android.hardware.input",
         "com.android.audio.service",
-        "com.android.externalstorage"
+        "com.android.externalstorage",
+        // MediaTek / MatrixTV TV middleware guarded by cleanyourtv (#1578)
+        "com.cltv.mal",
+        "com.mediatek.tis",
+        "com.mediatek.tv.service",
+        "com.mediatek.tv.agent",
+    )
+
+    private val CORE_PROVIDERS_OK = setOf(
+        "com.android.providers.calendar",
+        "com.android.providers.contacts",
+        "com.android.providers.userdictionary",
+        "com.android.providers.blockednumber",
     )
 
     private val CAUTION_PACKAGES = setOf(
         "com.google.android.katniss", // Google Assistant TV
-        "com.amazon.vizzini",         // Alexa TV
+        "com.google.android.tungsten.setupwraith", // Google TV setup wizard (guard Wi-Fi owner before disabling!)
+        "com.amazon.vizzini", // Alexa TV
         "com.google.android.apps.mediashell", // Chromecast built-in
-        "com.android.vending",        // Google Play Store
-        "com.google.android.gms",     // Google Play Services
-        "com.google.android.gsf",     // Google Services Framework
+        "com.android.vending", // Google Play Store
+        "com.google.android.gms", // Google Play Services
+        "com.google.android.gsf", // Google Services Framework
         "com.google.android.syncadapters.contacts",
         "com.sony.dtv.tvinput.cs",
         "com.tcl.tvmanager",
-        "com.xiaomi.mitv.settings"
+        "com.xiaomi.mitv.settings",
     )
 
     fun isProtectedCore(packageName: String, isCurrentLauncher: Boolean): Boolean {
@@ -63,6 +88,8 @@ object SafetyClassifier {
         }
         if (isCurrentLauncher) return true
         if (packageName in CORE_PACKAGES) return true
+        if (packageName.startsWith("com.android.providers.") && packageName !in CORE_PROVIDERS_OK) return true
+        if (packageName.startsWith("com.google.android.overlay.modules")) return true
         if (packageName.startsWith("com.android.server") ||
             packageName.startsWith("com.android.internal") ||
             packageName.startsWith("com.google.android.networkstack") ||
