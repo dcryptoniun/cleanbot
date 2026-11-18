@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -90,8 +91,15 @@ fun HistoryScreen(
         },
     ) { pad ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .consumeWindowInsets(pad),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = pad.calculateTopPadding() + 8.dp,
+                bottom = pad.calculateBottomPadding() + 32.dp,
+            ),
         ) {
             item {
                 if (ui.history.isEmpty()) EmptyState(HistoryIcons.History, stringResource(R.string.history_empty_title), stringResource(R.string.history_empty_text))

@@ -2,6 +2,8 @@
 
 package com.gerstudio.cleanbot.ui.screens.cleantv
 
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -115,6 +118,7 @@ fun CleanTvWorkflowScreen(
     onGrantAccessibility: (String) -> Unit,
     onPickLauncherApk: () -> Unit,
     onApplyTheme: (TvTheme) -> Unit,
+    onInstallAndApplyTheme: ((TvTheme) -> Unit)? = null,
     onResetTheme: () -> Unit,
     onOpenModelDebloat: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
@@ -169,8 +173,7 @@ fun CleanTvWorkflowScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(CleanBotPalette.DesertSand)
-            .statusBarsPadding(),
+            .background(CleanBotPalette.DesertSand),
     ) {
         TvHeroBanner(
             device = device,
@@ -234,6 +237,15 @@ fun CleanTvWorkflowScreen(
                         selectedTheme = selectedTheme,
                         onThemeSelected = { theme -> haptics.tap(); selectedThemeId = theme.id },
                         onApplyTheme = { haptics.confirm(); onApplyTheme(selectedTheme) },
+                        onInstallAndApplyTheme = {
+                            haptics.confirm()
+                            if (onInstallAndApplyTheme != null) {
+                                onInstallAndApplyTheme(selectedTheme)
+                            } else {
+                                onInstallCleanYourTv(true)
+                                onApplyTheme(selectedTheme)
+                            }
+                        },
                         onResetTheme = { haptics.tap(); onResetTheme() },
                     )
                 }
@@ -735,90 +747,190 @@ private fun StepThemeView(
     selectedTheme: TvTheme,
     onThemeSelected: (TvTheme) -> Unit,
     onApplyTheme: () -> Unit,
+    onInstallAndApplyTheme: () -> Unit,
     onResetTheme: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
     val themeRowScroll = rememberScrollState()
+    val isWide = currentWindowAdaptiveInfoV2().windowSizeClass
+        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        StaggeredCardEntrance(delayMillis = 0) {
-            TvMockupPreview(
-                theme = selectedTheme,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        Text(
-            text = "CleanYourTV Preset Looks",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = CleanBotPalette.OliveDrab,
-        )
-
+    if (isWide) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(themeRowScroll),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            TvTheme.CURATED_THEMES.forEach { theme ->
-                val selected = theme.id == selectedTheme.id
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (selected) CleanBotPalette.SignalYellow.copy(alpha = 0.25f) else CleanBotPalette.DesertSandBright,
-                    border = BorderStroke(
-                        width = if (selected) 2.dp else 1.dp,
-                        color = if (selected) CleanBotPalette.OliveDrab else CleanBotPalette.SandOutline,
-                    ),
-                    modifier = Modifier
-                        .width(136.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable { onThemeSelected(theme) },
+            Box(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center,
+            ) {
+                TvMockupPreview(
+                    theme = selectedTheme,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(
+                    text = "CleanYourTV Preset Looks",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = CleanBotPalette.OliveDrab,
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Box(
+                    TvTheme.CURATED_THEMES.forEach { theme ->
+                        val selected = theme.id == selectedTheme.id
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (selected) CleanBotPalette.SignalYellow.copy(alpha = 0.25f) else CleanBotPalette.DesertSandBright,
+                            border = BorderStroke(
+                                width = if (selected) 2.dp else 1.dp,
+                                color = if (selected) CleanBotPalette.OliveDrab else CleanBotPalette.SandOutline,
+                            ),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(theme.primaryAccent)
-                                .border(1.dp, theme.backgroundColor.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(theme.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(theme.subtitle, style = MaterialTheme.typography.labelSmall, color = CleanBotPalette.SandMutedInk, maxLines = 1)
+                                .width(136.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable { onThemeSelected(theme) },
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(theme.primaryAccent)
+                                        .border(1.dp, theme.backgroundColor.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(theme.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Text(theme.subtitle, style = MaterialTheme.typography.labelSmall, color = CleanBotPalette.SandMutedInk, maxLines = 1)
+                            }
+                        }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                SignalButton(
+                    onClick = if (isLauncherInstalled) onApplyTheme else onInstallAndApplyTheme,
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        if (isLauncherInstalled) "Push '${selectedTheme.name}' to TV"
+                        else "Install CleanYourTV & Apply '${selectedTheme.name}'",
+                    )
+                }
+
+                SandOutlinedButton(
+                    onClick = onResetTheme,
+                    enabled = isLauncherInstalled,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reset CleanYourTV Theme")
                 }
             }
         }
-
-        SignalButton(
-            onClick = onApplyTheme,
-            enabled = isLauncherInstalled,
-            modifier = Modifier.fillMaxWidth(),
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+            StaggeredCardEntrance(delayMillis = 0) {
+                TvMockupPreview(
+                    theme = selectedTheme,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             Text(
-                if (isLauncherInstalled) "Push '${selectedTheme.name}' to TV"
-                else "Install CleanYourTV in Step 2 First",
+                text = "CleanYourTV Preset Looks",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = CleanBotPalette.OliveDrab,
             )
-        }
 
-        SandOutlinedButton(
-            onClick = onResetTheme,
-            enabled = isLauncherInstalled,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Reset CleanYourTV Theme")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(themeRowScroll),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                TvTheme.CURATED_THEMES.forEach { theme ->
+                    val selected = theme.id == selectedTheme.id
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (selected) CleanBotPalette.SignalYellow.copy(alpha = 0.25f) else CleanBotPalette.DesertSandBright,
+                        border = BorderStroke(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = if (selected) CleanBotPalette.OliveDrab else CleanBotPalette.SandOutline,
+                        ),
+                        modifier = Modifier
+                            .width(136.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onThemeSelected(theme) },
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(theme.primaryAccent)
+                                    .border(1.dp, theme.backgroundColor.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(theme.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(theme.subtitle, style = MaterialTheme.typography.labelSmall, color = CleanBotPalette.SandMutedInk, maxLines = 1)
+                        }
+                    }
+                }
+            }
+
+            SignalButton(
+                onClick = if (isLauncherInstalled) onApplyTheme else onInstallAndApplyTheme,
+                enabled = true,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    if (isLauncherInstalled) "Push '${selectedTheme.name}' to TV"
+                    else "Install CleanYourTV & Apply '${selectedTheme.name}'",
+                )
+            }
+
+            SandOutlinedButton(
+                onClick = onResetTheme,
+                enabled = isLauncherInstalled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Reset CleanYourTV Theme")
+            }
         }
     }
 }

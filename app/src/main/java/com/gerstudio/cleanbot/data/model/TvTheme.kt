@@ -2,8 +2,15 @@
 
 package com.gerstudio.cleanbot.data.model
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 
 /**
  * Dock layout styling mapped onto CleanYourTV v3.4 (`Config.java`) properties.
@@ -53,6 +60,7 @@ data class TvTheme(
      */
     fun toCleanYourTvJson(): String {
         val bgHex = if (isOledOptimized) "#000000" else String.format("#%06X", 0xFFFFFF and backgroundColor.value.toInt())
+        val accentHex = String.format("#%06X", 0xFFFFFF and primaryAccent.value.toInt())
         val opacityPct = (dockOpacity * 100f).toInt().coerceIn(30, 100)
         val glassStyle = when (dockStyle) {
             TvDockStyle.MODERN_OUTLINE -> "rim"
@@ -61,6 +69,8 @@ data class TvTheme(
         }
         return JSONObject().apply {
             put("background_color", bgHex)
+            put("accent_color", accentHex)
+            put("accent", accentHex)
             put("sky_intensity", skyIntensity.coerceIn(0, 100))
             put("columns", columns.coerceIn(1, 8))
             put("rows_below_dock", rowsBelowDock.coerceIn(0, 3))
@@ -88,6 +98,33 @@ data class TvTheme(
             put("show_greeting", true)
         }.toString(2)
     }
+
+    /**
+     * Generates a smooth 1920x1080 JPEG wallpaper matching this theme's gradient colors.
+     * CleanYourTV renders `wallpaper.jpg` as the full-screen background if present.
+     */
+    fun generateWallpaperJpg(): ByteArray? = runCatching {
+        val width = 1920
+        val height = 1080
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val colorList = if (gradientColors.isNotEmpty()) gradientColors else listOf(backgroundColor, primaryAccent)
+        val argbColors = colorList.map { it.toArgb() }.toIntArray()
+        val finalColors = if (argbColors.size == 1) intArrayOf(argbColors[0], argbColors[0]) else argbColors
+        val shader = LinearGradient(
+            0f, 0f, width.toFloat(), height.toFloat(),
+            finalColors,
+            null,
+            Shader.TileMode.CLAMP,
+        )
+        val paint = Paint().apply { this.shader = shader }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+        val out = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        bitmap.recycle()
+        out.toByteArray()
+    }.getOrNull()
 
     companion object {
         val CURATED_THEMES: List<TvTheme> = listOf(

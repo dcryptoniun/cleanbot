@@ -26,9 +26,9 @@ class ThemeManager(
     private val providerUri = "content://$pkg.theme"
 
     /**
-     * Writes `config.json` + `theme_revision` via `ThemeProvider` (`content write`, avoiding
-     * Android 11+ / Android 14+ shell UID `EACCES`), with `cp` fallback, then restarts Home
-     * while preserving CleanYourTV's enabled key accessibility services.
+     * Writes `config.json` + `wallpaper.jpg` + `theme_revision` via `ThemeProvider` (`content write`,
+     * avoiding Android 11+ / 14+ shell UID `EACCES`), with direct ADB push & `cp` fallbacks,
+     * then restarts Home while preserving CleanYourTV's enabled key accessibility services.
      */
     suspend fun applyThemeToTv(theme: TvTheme): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
@@ -36,15 +36,43 @@ class ThemeManager(
             val revision = UUID.randomUUID().toString().replace("-", "")
             val stageCfg = "/data/local/tmp/cyt-config.json"
             val stageRev = "/data/local/tmp/cyt-theme_revision"
+            val stageWp = "/data/local/tmp/cyt-wallpaper.jpg"
 
-            writeStagedText(stageCfg, jsonContent)
-            writeStagedText(stageRev, revision)
+            val cfgBytes = jsonContent.toByteArray(Charsets.UTF_8)
+            val revBytes = revision.toByteArray(Charsets.UTF_8)
 
-            val wroteCfg = pushViaProviderOrCopy(stageCfg, "config.json")
-            val wroteRev = pushViaProviderOrCopy(stageRev, "theme_revision")
+            // Stage config & revision via direct ADB sync push (falling back to shell write)
+            runCatching { session.push(cfgBytes, stageCfg) }
+                .getOrElse { writeStagedText(stageCfg, jsonContent) }
+            runCatching { session.push(revBytes, stageRev) }
+                .getOrElse { writeStagedText(stageRev, revision) }
+
+            val wroteCfg = pushViaProviderOrCopy(stageCfg, "config.json", cfgBytes)
+            val wroteRev = pushViaProviderOrCopy(stageRev, "theme_revision", revBytes)
+
+            // Handle wallpaper: for OLED minimal, clear wallpaper so true black renders;
+            // for colorful looks, push generated 1080p gradient wallpaper.
+            if (theme.isOledOptimized) {
+                session.shell(
+                    "content delete --uri $providerUri/wallpaper.jpg 2>/dev/null; " +
+                        "rm -f $filesDir/wallpaper.jpg 2>/dev/null",
+                )
+            } else {
+                val wpBytes = theme.generateWallpaperJpg()
+                if (wpBytes != null && wpBytes.isNotEmpty()) {
+                    runCatching { session.push(wpBytes, stageWp) }
+                    pushViaProviderOrCopy(stageWp, "wallpaper.jpg", wpBytes)
+                    session.shell("rm -f $stageWp 2>/dev/null")
+                }
+            }
 
             session.shell("rm -f $stageCfg $stageRev 2>/dev/null")
-            check(wroteCfg && wroteRev) {
+
+            val verifyRead = session.shell("content read --uri $providerUri/config.json 2>&1").output
+            val verified = "background_color" in verifyRead ||
+                session.shell("test -s $filesDir/config.json && echo OK 2>/dev/null").output.trim() == "OK"
+
+            check(verified || (wroteCfg && wroteRev)) {
                 "The TV refused writing theme files to CleanYourTV ($pkg). Ensure CleanYourTV Launcher v3.4 is installed."
             }
 
@@ -60,7 +88,9 @@ class ThemeManager(
         runCatching {
             val revision = UUID.randomUUID().toString().replace("-", "")
             val stageRev = "/data/local/tmp/cyt-theme_revision"
-            writeStagedText(stageRev, revision)
+            val revBytes = revision.toByteArray(Charsets.UTF_8)
+            runCatching { session.push(revBytes, stageRev) }
+                .getOrElse { writeStagedText(stageRev, revision) }
 
             session.shell(
                 "rm -f $filesDir/config.json $filesDir/wallpaper.jpg $filesDir/wallpapers/captions.txt 2>/dev/null; " +
@@ -68,7 +98,7 @@ class ThemeManager(
                     "content delete --uri $providerUri/wallpaper.jpg 2>/dev/null; " +
                     "content delete --uri $providerUri/wallpapers 2>/dev/null",
             )
-            pushViaProviderOrCopy(stageRev, "theme_revision")
+            pushViaProviderOrCopy(stageRev, "theme_revision", revBytes)
             session.shell("rm -f $stageRev 2>/dev/null")
 
             restartHomePreservingKeyServices()
@@ -121,7 +151,11 @@ class ThemeManager(
         session.shell("printf '%s' '$b64' | base64 -d > $stagePath 2>/dev/null || echo '$b64' | base64 -d > $stagePath")
     }
 
-    private suspend fun pushViaProviderOrCopy(stagePath: String, relativeName: String): Boolean {
+    private suspend fun pushViaProviderOrCopy(
+        stagePath: String,
+        relativeName: String,
+        fallbackBytes: ByteArray? = null,
+    ): Boolean {
         val targetPath = "$filesDir/$relativeName"
         // Provider write creates the file owned by CleanYourTV's UID (critical on Android 14+);
         // Android 8/9 print "[ERROR] Unsupported operation: write" with exit 0, so inspect text.
@@ -133,8 +167,14 @@ class ThemeManager(
         val providerSucceeded = providerOut.exitCode == 0 &&
             "Unsupported operation" !in providerText &&
             "Error while accessing provider" !in providerText &&
-            "Exception" !in providerText
+            "Exception" !in providerText &&
+            "No such file" !in providerText
         if (providerSucceeded) return true
+
+        if (fallbackBytes != null) {
+            val directPush = runCatching { session.push(fallbackBytes, targetPath) }
+            if (directPush.isSuccess) return true
+        }
 
         val cpOut = session.shell("mkdir -p $filesDir 2>/dev/null; cp $stagePath $targetPath 2>&1")
         return cpOut.exitCode == 0 && "Permission denied" !in cpOut.output

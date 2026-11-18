@@ -67,7 +67,10 @@ class PlayUpdateManager(
     /**
      * Checks if a new version is available on Google Play.
      */
-    fun checkForUpdate(onAvailable: ((AppUpdateInfo) -> Unit)? = null) {
+    fun checkForUpdate(
+        onAvailable: ((AppUpdateInfo) -> Unit)? = null,
+        onNotAvailable: (() -> Unit)? = null,
+    ) {
         try {
             appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
                 if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
@@ -76,13 +79,20 @@ class PlayUpdateManager(
                     if (isFlexible || isImmediate) {
                         _updateStatus.value = PlayUpdateStatus.UpdateAvailable(info, isImmediate = !isFlexible && isImmediate)
                         onAvailable?.invoke(info)
+                    } else {
+                        onNotAvailable?.invoke()
                     }
                 } else if (info.installStatus() == InstallStatus.DOWNLOADED) {
                     _updateStatus.value = PlayUpdateStatus.Downloaded
+                } else {
+                    onNotAvailable?.invoke()
                 }
+            }.addOnFailureListener {
+                onNotAvailable?.invoke()
             }
         } catch (_: Exception) {
             // Non-Play Store builds or offline environments fail gracefully
+            onNotAvailable?.invoke()
         }
     }
 

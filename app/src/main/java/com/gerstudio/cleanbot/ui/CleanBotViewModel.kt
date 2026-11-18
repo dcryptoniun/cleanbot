@@ -6,6 +6,9 @@ import android.app.Activity
 import com.gerstudio.cleanbot.domain.billing.PlayBillingManager
 import com.gerstudio.cleanbot.domain.billing.TipOption
 import com.gerstudio.cleanbot.domain.billing.PurchaseStatus
+import com.gerstudio.cleanbot.ui.components.OperationIcon
+import com.gerstudio.cleanbot.ui.components.OperationProcessingState
+import com.gerstudio.cleanbot.ui.components.PoliteTipPrompt
 import com.gerstudio.cleanbot.domain.play.PlayReviewManager
 import com.gerstudio.cleanbot.domain.play.PlayUpdateManager
 import com.gerstudio.cleanbot.domain.play.PlayUpdateStatus
@@ -478,6 +481,16 @@ class CleanBotViewModel(
 
     private val _restorePoints = MutableStateFlow<List<DebloatRestorePoint>>(emptyList())
     val restorePoints: StateFlow<List<DebloatRestorePoint>> = _restorePoints.asStateFlow()
+
+    private val _processingState = MutableStateFlow<OperationProcessingState?>(null)
+    val processingState: StateFlow<OperationProcessingState?> = _processingState.asStateFlow()
+
+    private val _politeTipPrompt = MutableStateFlow<PoliteTipPrompt?>(null)
+    val politeTipPrompt: StateFlow<PoliteTipPrompt?> = _politeTipPrompt.asStateFlow()
+
+    fun dismissPoliteTipPrompt() {
+        _politeTipPrompt.value = null
+    }
 
     private var tvToolsManager: TvToolsManager? = null
     private var tvToolsDeviceId: String? = null
@@ -1164,13 +1177,28 @@ class CleanBotViewModel(
         setBundledInstall(id) {
             it.copy(phase = CleanYourTvInstallState.Phase.Installing, size = app.sizeBytes, progress = null, picked = picked)
         }
+        _processingState.value = OperationProcessingState(
+            title = "Installing CleanYourTV",
+            details = "Transferring tvhome.apk to TV...",
+            progress = 0f,
+            iconType = OperationIcon.LAUNCHER,
+        )
         val result = try {
             source.install(id, app.files, app.info, allowDowngrade = false) { p ->
                 setBundledInstall(id) { it.copy(progress = p) }
+                val frac = p.fraction ?: if (app.sizeBytes > 0) p.done.toFloat() / app.sizeBytes else null
+                _processingState.value = OperationProcessingState(
+                    title = "Installing CleanYourTV",
+                    details = "Transferring tvhome.apk (${p.done / 1024} KB)...",
+                    progress = frac,
+                    iconType = OperationIcon.LAUNCHER,
+                )
             }
         } catch (e: CancellationException) {
+            _processingState.value = null
             throw e
         } catch (_: Exception) {
+            _processingState.value = null
             updateDevice(id) {
                 it.copy(
                     launcher = LauncherFlow(
@@ -1185,25 +1213,38 @@ class CleanBotViewModel(
         when (result) {
             InstallResult.Done -> {
                 setBundledInstall(id) { it.copy(phase = CleanYourTvInstallState.Phase.Configuring, progress = null) }
+                _processingState.value = OperationProcessingState(
+                    title = "Configuring CleanYourTV",
+                    details = "Optimizing speed-profile and granting permissions...",
+                    iconType = OperationIcon.LAUNCHER,
+                )
                 runCatching { inst.verifyAndPostSetup(session, enableKeyServices) }
                 launcherInstalled(id, CLEAN_YOUR_TV) { step ->
                     updateDevice(id) { it.copy(launcher = LauncherFlow(step = step, pkg = CLEAN_YOUR_TV, bundled = null)) }
                 }
+                _processingState.value = null
                 recordPositiveMilestone()
-            }
-            is InstallResult.Refused -> updateDevice(id) {
-                it.copy(
-                    launcher = LauncherFlow(
-                        LauncherFlow.Step.Pick,
-                        CLEAN_YOUR_TV,
-                        CleanYourTvInstallState(
-                            phase = CleanYourTvInstallState.Phase.Refused,
-                            picked = picked,
-                            error = Copy.installRefused(result.reason, launcherName(CLEAN_YOUR_TV)),
-                            enableKeyServices = enableKeyServices,
-                        ),
-                    ),
+                _politeTipPrompt.value = PoliteTipPrompt(
+                    title = "CleanYourTV Installed! 🚀",
+                    message = "CleanYourTV Launcher v3.4 is now installed, optimized, and ready on your TV.",
                 )
+            }
+            is InstallResult.Refused -> {
+                _processingState.value = null
+                updateDevice(id) {
+                    it.copy(
+                        launcher = LauncherFlow(
+                            LauncherFlow.Step.Pick,
+                            CLEAN_YOUR_TV,
+                            CleanYourTvInstallState(
+                                phase = CleanYourTvInstallState.Phase.Refused,
+                                picked = picked,
+                                error = Copy.installRefused(result.reason, launcherName(CLEAN_YOUR_TV)),
+                                enableKeyServices = enableKeyServices,
+                            ),
+                        ),
+                    )
+                }
             }
         }
     }
@@ -2408,10 +2449,26 @@ class CleanBotViewModel(
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id)
         viewModelScope.launch {
+            val targets = packageNames.distinct().filter { !SafetyClassifier.isProtectedCore(it, false) }
+            _processingState.value = OperationProcessingState(
+                title = "Debloating TV Packages",
+                details = "Preparing debloat engine for ${targets.size} apps...",
+                progress = 0f,
+                step = 0,
+                total = targets.size,
+                iconType = OperationIcon.DEBLOAT,
+            )
             val succeeded = mutableListOf<String>()
             source.batch(id) {
-                for (pkg in packageNames.distinct()) {
-                    if (SafetyClassifier.isProtectedCore(pkg, false)) continue
+                targets.forEachIndexed { index, pkg ->
+                    _processingState.value = OperationProcessingState(
+                        title = "Debloating TV Packages",
+                        details = "Cleaning $pkg...",
+                        progress = (index + 1).toFloat() / targets.size.coerceAtLeast(1),
+                        step = index + 1,
+                        total = targets.size,
+                        iconType = OperationIcon.DEBLOAT,
+                    )
                     val ok = when (mode) {
                         PackageActionMode.DISABLE -> {
                             runCatching { source.act(id, Action.Disable, pkg) }.isSuccess
@@ -2435,6 +2492,7 @@ class CleanBotViewModel(
                     if (ok) succeeded += pkg
                 }
             }
+            _processingState.value = null
             if (succeeded.isNotEmpty()) {
                 recordPositiveMilestone()
                 val profile = TvBrandRecognizer.recognize(_state.value.selected, _state.value.device.apps)
@@ -2457,10 +2515,14 @@ class CleanBotViewModel(
             }
             apps?.let { loadLists(id) { it } }
             val estMb = succeeded.size * 18
-            _notice.value = if (succeeded.isNotEmpty()) {
-                UiText.Raw("Cleaned ${succeeded.size} packages (~${estMb} MB freed)")
+            if (succeeded.isNotEmpty()) {
+                _notice.value = UiText.Raw("Cleaned ${succeeded.size} packages (~${estMb} MB freed)")
+                _politeTipPrompt.value = PoliteTipPrompt(
+                    title = "TV Debloat Complete! 🎉",
+                    message = "Successfully cleaned ${succeeded.size} packages and freed ~${estMb} MB of RAM and storage.",
+                )
             } else {
-                UiText.Raw("No matching unprotected packages needed cleaning")
+                _notice.value = UiText.Raw("No matching unprotected packages needed cleaning")
             }
         }
     }
@@ -2468,9 +2530,25 @@ class CleanBotViewModel(
     fun undoRestorePoint(point: DebloatRestorePoint) {
         val id = _state.value.selectedId ?: return
         viewModelScope.launch {
+            _processingState.value = OperationProcessingState(
+                title = "Restoring Packages",
+                details = "Undoing debloat snapshot...",
+                progress = 0f,
+                step = 0,
+                total = point.disabledPackages.size,
+                iconType = OperationIcon.RESTORE,
+            )
             var restoredCount = 0
             source.batch(id) {
-                for (pkg in point.disabledPackages) {
+                point.disabledPackages.forEachIndexed { index, pkg ->
+                    _processingState.value = OperationProcessingState(
+                        title = "Restoring Packages",
+                        details = "Re-enabling $pkg...",
+                        progress = (index + 1).toFloat() / point.disabledPackages.size.coerceAtLeast(1),
+                        step = index + 1,
+                        total = point.disabledPackages.size,
+                        iconType = OperationIcon.RESTORE,
+                    )
                     val isCurrentlyDisabled = _state.value.device.apps.any { it.packageName == pkg && !it.enabled }
                     val action = if (isCurrentlyDisabled) Action.Enable else Action.RestoreExisting
                     if (runCatching { source.act(id, action, pkg) }.isSuccess) {
@@ -2478,6 +2556,7 @@ class CleanBotViewModel(
                     }
                 }
             }
+            _processingState.value = null
             _restorePoints.value = _restorePoints.value.map {
                 if (it.id == point.id) it.copy(active = false) else it
             }
@@ -2486,6 +2565,12 @@ class CleanBotViewModel(
             updateDevice(id) { it.copy(apps = apps ?: it.apps, history = history ?: it.history) }
             apps?.let { loadLists(id) { it } }
             _notice.value = UiText.Raw("1-Tap Undo: Restored $restoredCount apps!")
+            if (restoredCount > 0) {
+                _politeTipPrompt.value = PoliteTipPrompt(
+                    title = "Packages Restored! 🔄",
+                    message = "Restored $restoredCount apps from '${point.presetName}'.",
+                )
+            }
         }
     }
 
@@ -2499,20 +2584,43 @@ class CleanBotViewModel(
             return
         }
         viewModelScope.launch {
+            _processingState.value = OperationProcessingState(
+                title = "Restoring All Apps",
+                details = "Re-enabling ${disabledApps.size} apps...",
+                progress = 0f,
+                step = 0,
+                total = disabledApps.size,
+                iconType = OperationIcon.RESTORE,
+            )
             var restoredCount = 0
             source.batch(id) {
-                for (app in disabledApps) {
+                disabledApps.forEachIndexed { index, app ->
+                    _processingState.value = OperationProcessingState(
+                        title = "Restoring All Apps",
+                        details = "Re-enabling ${app.label.ifEmpty { app.packageName }}...",
+                        progress = (index + 1).toFloat() / disabledApps.size.coerceAtLeast(1),
+                        step = index + 1,
+                        total = disabledApps.size,
+                        iconType = OperationIcon.RESTORE,
+                    )
                     if (runCatching { source.act(id, Action.Enable, app.packageName) }.isSuccess) {
                         restoredCount++
                     }
                 }
             }
+            _processingState.value = null
             _restorePoints.value = _restorePoints.value.map { it.copy(active = false) }
             val apps = runCatching { source.apps(id) }.getOrNull()
             val history = runCatching { source.history(id) }.getOrNull()
             updateDevice(id) { it.copy(apps = apps ?: it.apps, history = history ?: it.history) }
             apps?.let { loadLists(id) { it } }
             _notice.value = UiText.Raw("Restored $restoredCount disabled apps!")
+            if (restoredCount > 0) {
+                _politeTipPrompt.value = PoliteTipPrompt(
+                    title = "All Apps Restored! 🔄",
+                    message = "Successfully re-enabled $restoredCount apps on your TV.",
+                )
+            }
         }
     }
 
@@ -2824,12 +2932,23 @@ class CleanBotViewModel(
     fun installApkFromPath(path: String) {
         val id = _state.value.selectedId ?: return
         val session = source.activeSession(id) ?: return
+        val fileName = path.substringAfterLast('/')
+        _processingState.value = OperationProcessingState(
+            title = "Installing App on TV",
+            details = "Installing $fileName on your TV...",
+            iconType = OperationIcon.APP_INSTALL,
+        )
         viewModelScope.launch {
             val repo = FileRepository(session)
             val res = repo.installApk(path)
+            _processingState.value = null
             if (res.isSuccess) {
                 _notice.value = UiText.Raw("Installed: ${res.getOrNull()}")
                 refreshApps(id)
+                _politeTipPrompt.value = PoliteTipPrompt(
+                    title = "App Installed! 📦",
+                    message = "Successfully installed $fileName on your TV.",
+                )
             } else {
                 _notice.value = UiText.Raw("Installation failed: ${res.exceptionOrNull()?.message}")
             }
@@ -2868,13 +2987,77 @@ class CleanBotViewModel(
         val session = source.activeSession(id)
         if (session == null || appContext == null) {
             _notice.value = UiText.Raw("Demo TV: Applied '${theme.name}' look")
+            _politeTipPrompt.value = PoliteTipPrompt(
+                title = "Look '${theme.name}' Applied! 🎨",
+                message = "Applied '${theme.name}' TV look.",
+            )
             return
         }
+        _processingState.value = OperationProcessingState(
+            title = "Applying TV Look",
+            details = "Staging '${theme.name}' preset & wallpaper...",
+            iconType = OperationIcon.THEME,
+        )
         viewModelScope.launch {
             val mgr = ThemeManager(appContext, session)
             val res = mgr.applyThemeToTv(theme)
-            if (res.isSuccess) recordPositiveMilestone()
-            _notice.value = UiText.Raw(res.getOrElse { "Failed to push theme: ${it.message}" })
+            _processingState.value = null
+            if (res.isSuccess) {
+                recordPositiveMilestone()
+                _notice.value = UiText.Raw(res.getOrNull() ?: "Applied '${theme.name}' to CleanYourTV")
+                _politeTipPrompt.value = PoliteTipPrompt(
+                    title = "Look '${theme.name}' Applied! 🎨",
+                    message = "Successfully pushed '${theme.name}' look & wallpaper to CleanYourTV on your TV.",
+                )
+            } else {
+                _notice.value = UiText.Raw(res.exceptionOrNull()?.message ?: "Failed to push theme")
+            }
+        }
+    }
+
+    /** Installs CleanYourTV Launcher first if missing, then applies the selected visual preset. */
+    fun installCleanYourTvAndApplyTheme(theme: TvTheme) {
+        val id = _state.value.selectedId ?: return
+        viewModelScope.launch {
+            _processingState.value = OperationProcessingState(
+                title = "Setting Up TV Look",
+                details = "Installing CleanYourTV Launcher first...",
+                iconType = OperationIcon.LAUNCHER,
+            )
+            val inst = installer
+            val session = source.activeSession(id)
+            if (inst != null && session != null) {
+                val app = runCatching { inst.prepareBundled() }.getOrNull()
+                if (app != null) {
+                    source.install(id, app.files, app.info, allowDowngrade = false) {}
+                    runCatching { inst.verifyAndPostSetup(session, true) }
+                    launcherInstalled(id, CLEAN_YOUR_TV) {}
+                }
+            } else {
+                runCatching { source.makeHome(id, CLEAN_YOUR_TV, true) }
+            }
+            if (session != null && appContext != null) {
+                _processingState.value = OperationProcessingState(
+                    title = "Applying TV Look",
+                    details = "Pushing '${theme.name}' preset & wallpaper to CleanYourTV...",
+                    iconType = OperationIcon.THEME,
+                )
+                val mgr = ThemeManager(appContext, session)
+                val res = mgr.applyThemeToTv(theme)
+                _processingState.value = null
+                if (res.isSuccess) {
+                    recordPositiveMilestone()
+                    _notice.value = UiText.Raw(res.getOrNull() ?: "Applied '${theme.name}' to CleanYourTV")
+                    _politeTipPrompt.value = PoliteTipPrompt(
+                        title = "CleanYourTV & '${theme.name}' Ready! 🌟",
+                        message = "Installed CleanYourTV Launcher and applied the '${theme.name}' look.",
+                    )
+                } else {
+                    _notice.value = UiText.Raw(res.exceptionOrNull()?.message ?: "Failed to push theme")
+                }
+            } else {
+                _processingState.value = null
+            }
         }
     }
 
@@ -2885,9 +3068,15 @@ class CleanBotViewModel(
             _notice.value = UiText.Raw("Demo TV: CleanYourTV theme reset to default")
             return
         }
+        _processingState.value = OperationProcessingState(
+            title = "Resetting TV Look",
+            details = "Restoring CleanYourTV built-in default look...",
+            iconType = OperationIcon.THEME,
+        )
         viewModelScope.launch {
             val mgr = ThemeManager(appContext, session)
             val res = mgr.resetTvThemeToDefault()
+            _processingState.value = null
             _notice.value = UiText.Raw(res.getOrElse { "Failed to reset theme: ${it.message}" })
         }
     }
@@ -3009,8 +3198,11 @@ class CleanBotViewModel(
         playReviewManager?.recordMilestone()
     }
 
-    fun checkForGooglePlayUpdate(onAvailable: ((com.google.android.play.core.appupdate.AppUpdateInfo) -> Unit)? = null) {
-        playUpdateManager?.checkForUpdate(onAvailable)
+    fun checkForGooglePlayUpdate(
+        onAvailable: ((com.google.android.play.core.appupdate.AppUpdateInfo) -> Unit)? = null,
+        onNotAvailable: (() -> Unit)? = null,
+    ) {
+        playUpdateManager?.checkForUpdate(onAvailable, onNotAvailable)
     }
 
     fun startGooglePlayUpdate(activity: Activity, info: com.google.android.play.core.appupdate.AppUpdateInfo): Boolean {

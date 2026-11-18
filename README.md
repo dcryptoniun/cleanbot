@@ -135,7 +135,7 @@ Contributions, bug reports, and device compatibility lists are warmly welcomed! 
 cLeanBot is 100% free, open-source, and contains zero advertisements or trackers. If cLeanBot helped declutter or speed up your TV, consider supporting our ongoing development!
 
 - ☕ **Buy Me a Coffee**: [buymeacoffee.com/mayankmeena](https://buymeacoffee.com/mayankmeena)
-- 💖 **GitHub Sponsors**: [github.com/sponsors/mayankmeena](https://github.com/sponsors/mayankmeena)
+- 💖 **GitHub Sponsors**: [github.com/sponsors/dcryptoniun](https://github.com/sponsors/dcryptoniun)
 - 📲 **More Apps on Google Play**: [Ger Studio Developer Profile](https://play.google.com/store/apps/dev?id=8895908145914606687)
 - 🌐 **Official Website**: [gerstudio.com](https://www.gerstudio.com/)
 - ⭐ **Star on GitHub**: [github.com/dcryptoniun/cleanbot](https://github.com/dcryptoniun/cleanbot)

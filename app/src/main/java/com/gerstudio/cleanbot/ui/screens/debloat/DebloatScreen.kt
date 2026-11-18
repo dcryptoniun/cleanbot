@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.layout.WindowInsetsRulers
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -233,6 +234,7 @@ fun DebloatScreen(
                     topBar = {
                         Column(modifier = Modifier.background(CleanBotPalette.DesertSand)) {
                             MediumTopAppBar(
+                                windowInsets = WindowInsets(0, 0, 0, 0),
                                 colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = CleanBotPalette.DesertSand,
                                     scrolledContainerColor = CleanBotPalette.DesertSandBright,

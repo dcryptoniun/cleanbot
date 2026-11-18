@@ -97,8 +97,7 @@ fun ToolsHubScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(CleanBotPalette.DesertSand)
-            .statusBarsPadding(),
+            .background(CleanBotPalette.DesertSand),
     ) {
         PrimaryTabRow(
             selectedTabIndex = selectedTab,

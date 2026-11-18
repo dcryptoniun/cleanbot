@@ -284,7 +284,7 @@ fun RemoteScreen(
         Box(
             Modifier.fillMaxSize()
                 .background(CleanBotPalette.DesertSand)
-                .then(if (embedded) Modifier.statusBarsPadding() else Modifier)
+                .then(if (!embedded) Modifier.statusBarsPadding() else Modifier)
                 .fitInside(WindowInsetsRulers.Ime.current)
                 .onGloballyPositioned { origin = it.positionInWindow() }
                 .pointerInput(typing) {

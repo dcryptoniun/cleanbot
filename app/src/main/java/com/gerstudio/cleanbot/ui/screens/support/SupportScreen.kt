@@ -17,8 +17,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,13 +44,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -69,8 +76,9 @@ const val URL_BUY_ME_A_COFFEE = "https://buymeacoffee.com/mayankmeena"
 const val URL_PLAY_STORE_DEV = "https://play.google.com/store/apps/dev?id=8895908145914606687"
 const val URL_OFFICIAL_WEBSITE = "https://www.gerstudio.com/"
 const val URL_GITHUB_REPO = "https://github.com/dcryptoniun/cleanbot"
-const val URL_GITHUB_SPONSORS = "https://github.com/sponsors/mayankmeena"
+const val URL_GITHUB_SPONSORS = "https://github.com/sponsors/dcryptoniun"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupportScreen(
     tipOptions: List<TipOption>,
@@ -84,41 +92,57 @@ fun SupportScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (onBack != null) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-            }
-            Text(
-                text = "Support cLeanBot",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Support cLeanBot",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                actions = {
+                    if (onOpenSettings != null) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
             )
-            Spacer(modifier = Modifier.weight(1f))
-            if (onOpenSettings != null) {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
-
-        // Hero Card
-        HeroSupportCard()
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        modifier = modifier.fillMaxSize(),
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 680.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Hero Card
+                HeroSupportCard()
 
         if (onOpenSettings != null) {
             Card(
@@ -221,7 +245,7 @@ fun SupportScreen(
 
         ExternalLinkCard(
             title = "GitHub Sponsors",
-            subtitle = "Become a sponsor at github.com/sponsors/mayankmeena",
+            subtitle = "Become a sponsor at github.com/sponsors/dcryptoniun",
             icon = Icons.Default.VolunteerActivism,
             tint = Color(0xFFEA4AAA),
             onClick = { openUrl(context, URL_GITHUB_SPONSORS) }
@@ -244,6 +268,8 @@ fun SupportScreen(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
     }
 
     // Status / Thank You Dialog

@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -94,6 +95,8 @@ import com.gerstudio.cleanbot.ui.adaptive.AppDestination
 import com.gerstudio.cleanbot.ui.adaptive.CleanBotAdaptiveScaffold
 import com.gerstudio.cleanbot.ui.brands
 import com.gerstudio.cleanbot.ui.clock
+import com.gerstudio.cleanbot.ui.components.OperationProcessingOverlay
+import com.gerstudio.cleanbot.ui.components.PoliteTipDialog
 import com.gerstudio.cleanbot.ui.connectTitle
 import com.gerstudio.cleanbot.ui.name
 import com.gerstudio.cleanbot.ui.rememberChangelog
@@ -104,6 +107,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class MainActivity : ComponentActivity() {
+    private var activeViewModel: CleanBotViewModel? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -155,9 +159,21 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                         val now = vm.now.collectAsStateWithLifecycle()
+                        activeViewModel = vm
                         CompositionLocalProvider(LocalNow provides now) { CleanBotApp(vm, userPrefs) }
                     }
                 }
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == com.gerstudio.cleanbot.domain.play.PlayUpdateManager.REQUEST_CODE_UPDATE) {
+            if (resultCode != Activity.RESULT_OK) {
+                activeViewModel?.dismissGooglePlayUpdate()
             }
         }
     }
@@ -220,6 +236,7 @@ fun CleanBotApp(
     val state by vm.state.collectAsStateWithLifecycle()
     val browser = LocalUriHandler.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var adding by rememberSaveable { mutableStateOf(false) }
     var advanced by rememberSaveable { mutableStateOf(false) }
@@ -235,6 +252,8 @@ fun CleanBotApp(
     val fpsOverlayEnabled by vm.fpsOverlayEnabled.collectAsStateWithLifecycle()
     val tvDpi by vm.tvDpi.collectAsStateWithLifecycle()
     val playUpdateStatus by vm.playUpdateStatus.collectAsStateWithLifecycle()
+    val processingState by vm.processingState.collectAsStateWithLifecycle()
+    val politePrompt by vm.politeTipPrompt.collectAsStateWithLifecycle()
     // Connect again from the logged-out page: which TV, and since when, for its Allow screen.
     var rejoinId by rememberSaveable { mutableStateOf<String?>(null) }
     var rejoinSince by rememberSaveable { mutableStateOf(0L) }
@@ -286,6 +305,7 @@ fun CleanBotApp(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         vm.checkForUpdate()
         currentActivity?.let { vm.playUpdateManager?.onResume(it) }
+        vm.checkForGooglePlayUpdate()
     }
     LaunchedEffect(Unit) {
         vm.checkForGooglePlayUpdate()
@@ -303,16 +323,20 @@ fun CleanBotApp(
                 }
             }
             is PlayUpdateStatus.UpdateAvailable -> {
-                if (pStatus.isImmediate) {
-                    currentActivity?.let { vm.startGooglePlayUpdate(it, pStatus.info) }
-                } else {
-                    val res = snackbar.showSnackbar(
-                        message = "A new update is available on Google Play.",
-                        actionLabel = "Update",
-                        duration = SnackbarDuration.Long
-                    )
-                    if (res == SnackbarResult.ActionPerformed && currentActivity != null) {
-                        vm.startGooglePlayUpdate(currentActivity, pStatus.info)
+                // Auto-prompt Google Play in-app update dialog/sheet immediately
+                currentActivity?.let { act ->
+                    val started = vm.startGooglePlayUpdate(act, pStatus.info)
+                    if (!started) {
+                        scope.launch {
+                            val res = snackbar.showSnackbar(
+                                message = "A new update is available on Google Play.",
+                                actionLabel = "Update",
+                                duration = SnackbarDuration.Long
+                            )
+                            if (res == SnackbarResult.ActionPerformed) {
+                                vm.startGooglePlayUpdate(act, pStatus.info)
+                            }
+                        }
                     }
                 }
             }
@@ -452,7 +476,17 @@ fun CleanBotApp(
             onRateApp = { currentActivity?.let { vm.requestInAppReview(it, force = true) } },
             onCheckForUpdate = {
                 currentActivity?.let { act ->
-                    vm.checkForGooglePlayUpdate { info -> vm.startGooglePlayUpdate(act, info) }
+                    vm.checkForGooglePlayUpdate(
+                        onAvailable = { info -> vm.startGooglePlayUpdate(act, info) },
+                        onNotAvailable = {
+                            scope.launch {
+                                snackbar.showSnackbar(
+                                    message = "cLeanTV is already up to date.",
+                                    duration = SnackbarDuration.Short,
+                                )
+                            }
+                        }
+                    )
                 }
             },
             onBack = { settings = false },
@@ -497,6 +531,10 @@ fun CleanBotApp(
         CleanBotAdaptiveScaffold(
             currentDestination = destination,
             onNavigate = { destination = it },
+            appName = "cLeanTV",
+            selectedDeviceName = state.selected?.nickname ?: state.selected?.model ?: state.selected?.hit?.hostname,
+            onOpenDonate = { showSupport = true },
+            onOpenSettings = { settings = true },
         ) {
             when (destination) {
                 AppDestination.CleanTv -> {
@@ -517,6 +555,7 @@ fun CleanBotApp(
                         onGrantAccessibility = vm::grantLauncherAccessibility,
                         onPickLauncherApk = { pickCleanYourTvApk.launch(arrayOf(InDownloads.APK)) },
                         onApplyTheme = vm::applyTvTheme,
+                        onInstallAndApplyTheme = vm::installCleanYourTvAndApplyTheme,
                         onResetTheme = vm::resetTvTheme,
                         onOpenModelDebloat = { debloat = true },
                     )
@@ -624,7 +663,17 @@ fun CleanBotApp(
                         onRateApp = { currentActivity?.let { vm.requestInAppReview(it, force = true) } },
                         onCheckForUpdate = {
                             currentActivity?.let { act ->
-                                vm.checkForGooglePlayUpdate { info -> vm.startGooglePlayUpdate(act, info) }
+                                vm.checkForGooglePlayUpdate(
+                                    onAvailable = { info -> vm.startGooglePlayUpdate(act, info) },
+                                    onNotAvailable = {
+                                        scope.launch {
+                                            snackbar.showSnackbar(
+                                                message = "cLeanTV is already up to date.",
+                                                duration = SnackbarDuration.Short,
+                                            )
+                                        }
+                                    }
+                                )
                             }
                         },
                     )
@@ -649,6 +698,21 @@ fun CleanBotApp(
                 onDismiss = { showTvTools = false },
             )
         }
+    }
+
+    processingState?.let { proc ->
+        OperationProcessingOverlay(state = proc)
+    }
+
+    politePrompt?.let { prompt ->
+        PoliteTipDialog(
+            prompt = prompt,
+            onOpenDonate = {
+                vm.dismissPoliteTipPrompt()
+                showSupport = true
+            },
+            onDismiss = vm::dismissPoliteTipPrompt,
+        )
     }
 }
 

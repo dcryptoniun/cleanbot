@@ -12,15 +12,28 @@ until this file has a section for its version.
 
 ## Unreleased
 
+## 1.4.3 — 2026-11-18
+
+- **Improved:** Edge-to-edge drawing and adaptive multi-pane layout on wide screens. [#316](../../pull/316)
+- **Improved:** Auto-prompting Google Play In-App Updates upon availability. [#317](../../pull/317)
+- **Fixed:** Updated GitHub Sponsors link and resolved inset padding in hub screens. [#318](../../pull/318)
+
+## 1.4.2 — 2026-11-17
+
+- **New:** Loading processing overlay with live progress bar and tactical pulse effects. [#312](../../pull/312)
+- **New:** Top titlebar with app name and quick donate button. [#313](../../pull/313)
+- **New:** Polite tip and donate dialogue after debloating, launcher, or theme processes. [#314](../../pull/314)
+- **Fixed:** TV look theme presets with direct ADB sync push and wallpaper rendering. [#315](../../pull/315)
+
 ## 1.4.1 — 2026-11-13
 
-- **New:** Dead simple UI with unified 60-30-10 palette (Desert Sand, Olive Drab, Signal Yellow).
-- **New:** Bundled CleanYourTV launcher (v3.4) and catalog (468 TV models) with live upstream sync.
-- **New:** Fluid entrance animations, tactical pulse beacon, signal progress bars, and tactile haptics.
-- **Improved:** Strict launcher focus exclusively on CleanYourTV Launcher, removing third-party alternatives.
-- **Improved:** Navigation 3 runtime and Material3 adaptive scaffold with edge-to-edge layout across devices.
-- **Improved:** Upgraded dependencies to Android Gradle Plugin 9.5.1, Target SDK 37, and Material3 1.5.0-rc01.
-- **Fixed:** File repository transfers, directory navigation, and CleanBotViewModel startup initialization order.
+- **New:** Dead simple UI with unified 60-30-10 palette and tactile haptics. [#305](../../pull/305)
+- **New:** Bundled CleanYourTV launcher and catalog with live upstream sync. [#306](../../pull/306)
+- **New:** Fluid entrance animations, tactical pulse beacon, and signal progress bars. [#307](../../pull/307)
+- **Improved:** Strict launcher focus exclusively on CleanYourTV Launcher. [#308](../../pull/308)
+- **Improved:** Navigation 3 runtime and Material3 adaptive scaffold across devices. [#309](../../pull/309)
+- **Improved:** Upgraded dependencies to Android Gradle Plugin 9.5.1 and Target SDK 37. [#310](../../pull/310)
+- **Fixed:** File repository transfers, directory navigation, and ViewModel initialization order. [#311](../../pull/311)
 
 ## 1.3.1 — 2026-11-08
 

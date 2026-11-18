@@ -3,7 +3,9 @@
 package com.gerstudio.cleanbot.ui.adaptive
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoFixHigh
@@ -26,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import com.gerstudio.cleanbot.ui.components.CleanBotTitleBar
 import com.gerstudio.cleanbot.ui.theme.CleanBotPalette
 import com.gerstudio.cleanbot.ui.theme.CleanBotTheme
 import com.gerstudio.cleanbot.ui.theme.rememberCleanBotHaptics
@@ -50,6 +53,10 @@ enum class AppDestination(val label: String, val icon: ImageVector) {
 fun CleanBotAdaptiveScaffold(
     currentDestination: AppDestination,
     onNavigate: (AppDestination) -> Unit,
+    appName: String = "cLeanTV",
+    selectedDeviceName: String? = null,
+    onOpenDonate: () -> Unit = {},
+    onOpenSettings: (() -> Unit)? = null,
     isNavBarVisible: Boolean = true,
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable (Modifier) -> Unit,
@@ -122,9 +129,17 @@ fun CleanBotAdaptiveScaffold(
             }
         },
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            content(Modifier.fillMaxSize())
-            snackbarHost()
+        Column(modifier = Modifier.fillMaxSize()) {
+            CleanBotTitleBar(
+                appName = appName,
+                selectedDeviceName = selectedDeviceName,
+                onOpenDonate = onOpenDonate,
+                onOpenSettings = onOpenSettings,
+            )
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                content(Modifier.fillMaxSize())
+                snackbarHost()
+            }
         }
     }
 }
